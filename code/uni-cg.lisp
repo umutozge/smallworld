@@ -111,19 +111,19 @@
 (defun read-lexical-rules ()
   (with-open-file (instr *lexical-rules-path* :direction :input)
     (format t "Read ~A lexical rule(s).~%"
-			(do ((count 0 (+ 1 count))
-				 (item
-				   (read instr nil 'eof)
+            (do ((count 0 (+ 1 count))
+                 (item
+                   (read instr nil 'eof)
 				   (read instr nil 'eof)))
-			  ((eq item 'eof) count)
-			  (push item *lexical-rules*)))))
+                ((eq item 'eof) count)
+                (push item *lexical-rules*)))))
 
 (defun apply-lexical-rule (rule item)
   (let* ((rule-in (second (third rule)))
-		 (rule-out (second (fourth rule)))
-		 (bindings (unifier:tree-match rule-in item)))
-	(if bindings
-	  (sublis bindings rule-out))))
+         (rule-out (second (fourth rule)))
+         (bindings (unifier:tree-match rule-in item)))
+    (if bindings
+        (sublis bindings rule-out))))
 
 (defun proc-vocab-item (v)
   (let* ((form (car v))
@@ -161,7 +161,7 @@
                    (read instr nil 'eof)
                    (read instr nil 'eof)))
                 ((eq item 'eof) count)
-                (lex-put (print (construct-sign item)))))))
+                (lex-put (construct-sign item))))))
 
 (defun construct-sign (lex)
   (make-sign :phon (cadr (assoc 'phon lex))

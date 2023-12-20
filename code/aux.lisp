@@ -6,28 +6,32 @@
   (:use :common-lisp)
   (:export :multiset-table
            :flip-bool
-					 :uniq
-					 :tsv-to-list
-					 :strip-package-deco
-					 :starts-with-p
-					 :empty-string-p
-					 :read-from-file
-					 :string-to-list
-					 :csv-to-str-list
-					 :shuffle-list
-					 :read-file-as-string 
-					 :translate-string
-					 :replace-char-with-str
-					 :restore-left-assoc
-					 :symbol-starts-with
+           :gensym-p
+           :uniq
+           :tsv-to-list
+           :empty-string-p
+           :string-to-list
+           :csv-to-str-list
+           :one-char-sym-p
+           :shuffle-list
+           :translate-string
            :random-num-with-n-digits
+           :read-file-as-string 
+           :read-from-file
+           :replace-char-with-str
+           :restore-left-assoc
+           :starts-with-p
+           :string-to-pathname
+           :strip-package-deco
+           :symbol-char
+           :symbol-length
+           :symbol-starts-with
+           :symbol-starts-with-char
            :readlist
            :prompt
-           :string-to-pathname
            :write-string-to-file
            :tree2avm
-           :tree2qtree
-		   ))
+           :tree2qtree))
 
 (in-package aux)
 
@@ -43,88 +47,109 @@
    call with :keys to get the list of keys
    call with :get-table to get the embedded ht"
 	#'(lambda (&rest input)
-			(let ((head (car input))
-				    (tail (cadr input)))
-				(cond ((equal head :count) (hash-table-count ht))
-							((equal head :keys)
-							 (let ((store))
-								 (maphash 
-									 #'(lambda (k v)
-											 (declare (ignore v))
-											 (push k store))
-									 ht)
-								 (nreverse store)))
-							((equal head :check)
-							 (nth-value 1 (gethash tail ht)))
-							((equal head :get-table) ht)
-							(t 
-				(if tail
-				(if (nth-value 1 (gethash head ht))
-				(setf (gethash head ht) (cons tail (gethash head ht)))
-				(setf (gethash head ht) (list tail)))
-				(if (nth-value 1 (gethash head ht))
-				(nth-value 0 (gethash head ht))
-				(error "Key unknown."))))))))
+            (let ((head (car input))
+                  (tail (cadr input)))
+              (cond ((equal head :count) (hash-table-count ht))
+                    ((equal head :keys)
+                     (let ((store))
+                       (maphash 
+                         #'(lambda (k v)
+                             (declare (ignore v))
+                             (push k store))
+                         ht)
+                       (nreverse store)))
+                    ((equal head :check)
+                     (nth-value 1 (gethash tail ht)))
+                    ((equal head :get-table) ht)
+                    (t 
+                     (if tail
+                         (if (nth-value 1 (gethash head ht))
+                             (setf (gethash head ht) (cons tail (gethash head ht)))
+                             (setf (gethash head ht) (list tail)))
+                         (if (nth-value 1 (gethash head ht))
+                             (nth-value 0 (gethash head ht))
+                             (error "Key unknown."))))))))
 
 (defun uniq (lst &optional (comparator #'equal))
   "like Unix uniq"
   (if (endp lst)
 	nil
-	(cons (car lst)
-		   (uniq (remove-if 
-				   #'(lambda (x)
-					   (funcall comparator (car lst) x))
-				   (cdr lst))
-				 comparator))))
+        (cons (car lst)
+              (uniq (remove-if 
+                               #'(lambda (x)
+                                   (funcall comparator (car lst) x))
+                               (cdr lst))
+                    comparator))))
 
 (defun tsv-to-list (path)
   "convert a tab-separated value file to a list"
   (labels ((text-to-list (text)
-						 (read-from-string 
-						   (concatenate 'string "(" text ")")))
-		   (read-lines (str &optional acc)
-					   (let ((line (read-line str nil 'eof)))
-						 (if (equal line 'eof)
-						   acc
-						   (read-lines 
-							 str 
-							 (append
-							   acc
-							   (list (text-to-list line))))))))
-	(with-open-file (input-stream 
-					  (if (typep path 'string)
-						(make-pathname :name path)
-						path)
-					  :direction :input)
-	  (read-lines input-stream))))
+             (read-from-string 
+               (concatenate 'string "(" text ")")))
+           (read-lines (str &optional acc)
+             (let ((line (read-line str nil 'eof)))
+               (if (equal line 'eof)
+                   acc
+                   (read-lines 
+                     str 
+                     (append
+                       acc
+                       (list (text-to-list line))))))))
+    (with-open-file (input-stream 
+                      (if (typep path 'string)
+                          (make-pathname :name path)
+                          path)
+                      :direction :input)
+      (read-lines input-stream))))
 
 (defun strip-package-deco (expr)
   (read-from-string
-	(format nil "~A" expr)))
+    (format nil "~A" expr)))
 
 (defun starts-with-p (str prefix)
   "check whether the str starts with the prefix -- both are strings"
   (and 
-	(>= (length str) (length prefix))
-	(string-equal prefix (subseq str 0 (length prefix)))))
+    (>= (length str) (length prefix))
+    (string-equal prefix (subseq str 0 (length prefix)))))
 
 (defun readlist ()
   "Graham's On Lisp, p 56"
   (values (read-from-string
             (concatenate 'string
                          "(" (read-line) ")"))))
+
 (defun prompt (&rest args)
   "Graham's On Lisp, p 56"
   (apply #'format *query-io* args)
   (read *query-io*))
 
+(defun gensym-p (sym)
+  (let ((name (symbol-name sym)))
+    (and (digit-char-p (char name 1))
+         (char= (char name 0) #\G)
+         )))
+
+(defun symbol-char (sym index)
+  (let ((name (symbol-name sym)))
+    (if (< index (length name))
+        (char name index))))
+
+(defun symbol-length (sym)
+  (length (symbol-name sym)))
+
 (defun symbol-starts-with (sym chr)
   (char= (char (symbol-name sym) 0) chr))
 
+(defun symbol-starts-with-char (sym chr)
+  (char= (char (symbol-name sym) 0) chr))
+
+(defun one-char-sym-p (sym)
+  (= 1 (length (symbol-name sym))))
+
 (defun empty-string-p (str) 
   (and 
-	(stringp str)
-	(zerop (length str))))
+    (stringp str)
+    (zerop (length str))))
 
 
 ;;;;;;;;;;;;;;;

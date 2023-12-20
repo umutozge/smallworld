@@ -87,7 +87,7 @@
     nil))
 
 (defun main ()
-  (let ((project-path "prj/basic"))
+  (let ((project-path "prj/event1"))
     (run-program "/usr/bin/clear" nil :output *standard-output*)
     (format t "Welcome to SmallWorld~%~%An educational software for computational natural langauge semantics~%Type :help for help, :quit for quit.~%")
     (format t "~%~%Initing parser...")
