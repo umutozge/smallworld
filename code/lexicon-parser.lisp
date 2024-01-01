@@ -125,7 +125,7 @@
                         (parse (car sem))
                         (parse (cadr sem)))
                       (parse (cddr sem)))))))
-    (let ((newsem (aux:translate-string sem '((#\\ . #\!) (#\' . #\Space)))))
+    (let ((newsem (aux:translate-string-char sem '((#\\ . #\!) (#\' . #\Space)))))
       (parse (aux:string-to-list newsem)))))
 
 ; (defun parse-sem (sem)
@@ -153,7 +153,7 @@
 ; 							  (parse (car sem))
 ; 							  (parse (cadr sem)))
 ; 							(parse (cddr sem)))))))
-; 	(let ((newsem (aux:translate-string sem '((#\\ . #\!) (#\' . #\Space)))))
+; 	(let ((newsem (aux:translate-string-char sem '((#\\ . #\!) (#\' . #\Space)))))
 ; 	  (parse (aux:string-to-list newsem)))))
 
 (defun generate-entry-list ()

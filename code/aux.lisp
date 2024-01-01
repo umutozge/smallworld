@@ -14,7 +14,8 @@
            :csv-to-str-list
            :one-char-sym-p
            :shuffle-list
-           :translate-string
+           :translate-string-char
+           :translate-string-word
            :random-num-with-n-digits
            :read-file-as-string 
            :read-from-file
@@ -235,13 +236,24 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(defun translate-string (str table)
+(defun translate-string-char (str table)
   "translate the string str according to the character map table -- a dotted alist"
   (let ((master (copy-seq str)))
 	(dotimes (index (length master) master)
 	  (let ((replace-char (cdr (assoc (char master index) table))))
 		(if replace-char
 		  (setf (char master index) replace-char))))))
+
+(defun translate-string-word (str table)
+  "translate the string str according to the word map table -- a dotted alist"
+  (apply
+    #'concatenate
+    'string
+    (mapcar
+      #'(lambda (word)
+        (let ((val (assoc word table :test #'string-equal)))
+          (if val (rest val) word)))
+      (sb-unicode:words str))))
 
 (defun random-pick (seq)
   "randomly pick an element from a sequence"

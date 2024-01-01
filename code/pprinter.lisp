@@ -1,15 +1,30 @@
-(load "aux.lisp")
+(defpackage pprinter
+  (:use :common-lisp)
+  (:export :print-tex
+           :print-text))
 
+(defparameter pprinter::*logical-constants*
+  '(cond and or neg))
+
+(defparameter pprinter::*logical-operators*
+  '(lam forall exists))
+
+(in-package pprinter)
+
+;; TODO
+(load "/Users/umut/res/github/smallworld/code/aux.lisp")
+
+;; TODO
 (defparameter *input*
   '(FORALL X
            ((COND (WOMAN X))
             (FORALL G381 ((COND (BOOK G381)) ((READ G381) X))))))
 
 (defun logical-constant-p (form)
-  (member form '(cond and or)))
+  (member form *logical-constants*))
 
 (defun operator-p (form)
-  (member form '(forall exists lam)))
+  (member form *logical-operators*))
 
 (defun transform-atom (form)
   (cond ((= 1 (aux:symbol-length form)) form)
@@ -21,22 +36,13 @@
                         (symbol-name form)
                         "'"))))
 
-(defun variable-p (form)
-  (or
-    (aux:one-char-sym-p form)
-    (and
-      ()
-      (let ((name  (symbol-name form)))
-        (concatenate 'string "x_" (string (char name (- (length name) 1))))
-        ))))
-
 (defun parse (form)
   (cond ((null form) nil)
 
         ((atom form) (format nil "~(~A~)" (transform-atom form)))
 
         ((operator-p (first form))
-         (format nil "~(~A~) ~(~A~).~A"
+         (format nil "~(~A~) ~(~A~) . ~A"
                  (first form)
                  (transform-atom (second form))
                  (parse (third form))))
@@ -49,3 +55,14 @@
          (format nil "~A ~A"
                  (parse (first form))
                  (parse (second form))))))
+
+(defun print-text (form)
+  (aux:translate-string-word
+    (parse form)
+    `(("forall" . ,(string #\U2200))
+      ("exists" . ,(string #\U2203))
+      ("and"    . ,(string #\U2227))
+      ("or"     . ,(string #\U2228))
+      ("cond"   . ,(string #\U2283))
+      ("lam"    . ,(string #\U1D6CC)))
+    ))

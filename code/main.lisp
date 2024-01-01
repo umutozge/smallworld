@@ -1,9 +1,10 @@
 #!/opt/homebrew/bin/sbcl --script
 
-;(declaim (optimize (speed 0) (safety 3) (debug 3)))
+(declaim (optimize (speed 0) (safety 3) (debug 3)))
 
 (load "models.lisp")
 (load "uni-cg.lisp")
+(load "pprinter.lisp")
 
 (defparameter *vocab* nil)
 
@@ -36,24 +37,31 @@
 
 (defun parse-file (&optional fname)
 	(let* ((filename (or fname (read-line)))
-				(sentences (aux:tsv-to-list
-										 (make-pathname :name filename)))
-				(outpath (aux:string-to-pathname filename ".out")))
-		(with-open-file (str outpath :direction :output
-												 :if-does-not-exist :create
-												 :if-exists :overwrite)
-			(dolist (i sentences)
-				(format str (string-downcase "~{~A ~}~%~{~A~%~}~%~%") i (mapcar sign-sem (uniq-parses (parse-expr i)))))))) ; TODO can't display ambiguity
+        (sentences (aux:tsv-to-list
+                     (make-pathname :name filename)))
+        (outpath (aux:string-to-pathname filename ".out")))
+          (with-open-file (str outpath :direction :output
+                               :if-does-not-exist :create
+                               :if-exists :overwrite)
+            (dolist (i sentences)
+              (format str (string-downcase "~{~A ~}~%~{~A~%~}~%~%") i (mapcar sign-sem (uniq-parses (parse-expr i)))))))) ; TODO can't display ambiguity
 
 (defun parse-expr (&optional sent)
-	(let* ((sentence (or sent (aux:string-to-list (read-line))))
-				(unk (check-vocab sentence)))
-		(if unk
-			(format nil "~A is unknown" unk)
-			(uniq-parses (parse sentence)))))
+  (let* ((sentence (or sent (aux:string-to-list (read-line))))
+         (unk (check-vocab sentence)))
+    (if unk
+        (format nil "~A is unknown" unk)
+        (progn
+          (mapc
+            #'(lambda (sign)
+               (format t "~A~%" sign)
+               (format t "~%~A~%" (pprinter:print-text (sign-sem sign)))
+                )
+            (uniq-parses (parse sentence)))
+          ""))))
 
 (defun interpret-expr ()
-	(models:interpret (sign-sem (parse-expr))))
+  (models:interpret (sign-sem (parse-expr))))
 
 (defun display-help ()
   (format t "~%")
@@ -71,9 +79,9 @@
 
 
 (defun check-vocab (sentence)
-	(dolist (x sentence)
-		(if (not (member x *vocab*))
-			(return x))))
+  (dolist (x sentence)
+    (if (not (member x *vocab*))
+        (return x))))
 
 (defun switch-eta-normalization ()
   (setf *eta-normalize* (not *eta-normalize*)))
@@ -87,7 +95,7 @@
     nil))
 
 (defun main ()
-  (let ((project-path "prj/event1"))
+  (let ((project-path (second (command-line))))
     (run-program "/usr/bin/clear" nil :output *standard-output*)
     (format t "Welcome to SmallWorld~%~%An educational software for computational natural langauge semantics~%Type :help for help, :quit for quit.~%")
     (format t "~%~%Initing parser...")
