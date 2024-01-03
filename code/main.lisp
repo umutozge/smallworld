@@ -6,7 +6,17 @@
 (load "uni-cg.lisp")
 (load "pprinter.lisp")
 
-(defparameter *vocab* nil)
+;; init a global *state* closure available everywhere
+(setf  (symbol-function '*state*)
+  (let ((table (make-hash-table)))
+    #'(lambda (key &optional (value '<NULL>))
+      (if (not (equal value '<NULL>) )
+          (setf (gethash key table) value)
+          (gethash key table)))))
+
+;; decorate *state*
+(*state* 'eta-normalize t)
+
 
 (defun proc-input (input)
   (case input
@@ -21,7 +31,7 @@
 		((:interp-form :if)
 		 (print (interpret-form)) (terpri))
 		((:show-vocab :sv)
-		 (print *vocab*) (terpri))
+		 (print (*state* 'vocab)) (terpri))
 		((:switch-eta :se)
 		 (princ (switch-eta-normalization)) (terpri))
 		((:parse :p)
@@ -81,11 +91,11 @@
 
 (defun check-vocab (sentence)
   (dolist (x sentence)
-    (if (not (member x *vocab*))
+    (if (not (member x (*state* 'vocab)))
         (return x))))
 
 (defun switch-eta-normalization ()
-  (setf *eta-normalize* (not *eta-normalize*)))
+  (*state* 'eta-normalize (not (*state* 'eta-normalize))))
 
 (defun command-line ()
   (or
@@ -96,17 +106,17 @@
     nil))
 
 (defun main ()
-  (let ((project-path (second (command-line))))
-    (run-program "/usr/bin/clear" nil :output *standard-output*)
-    (format t "Welcome to SmallWorld~%~%An educational software for computational natural langauge semantics~%Type :help for help, :quit for quit.~%")
-    (format t "~%~%Initing parser...")
-    (init-parser project-path)
-    (setf *vocab* (funcall *lexicon* :keys))
-    (format t "~%")
-    (format t "done~%~%")
-    (loop
-      (format t "Ready> ")
-      (finish-output)
-      (proc-input (read)))))
+  (*state* 'project-path (second (command-line)))
+  (run-program "/usr/bin/clear" nil :output *standard-output*)
+  (format t "Welcome to SmallWorld~%~%An educational software for computational natural langauge semantics~%Type :help for help, :quit for quit.~%")
+  (format t "~%~%Initing parser...")
+  (init-parser (*state* 'project-path))
+  (*state* 'vocab (funcall *lexicon* :keys))
+  (format t "~%")
+  (format t "done~%~%")
+  (loop
+    (format t "Ready> ")
+    (finish-output)
+    (proc-input (read))))
 
 (main)

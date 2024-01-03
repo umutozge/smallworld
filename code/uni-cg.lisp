@@ -291,8 +291,6 @@
 ;;;;            Parsing           ;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defparameter *eta-normalize* t)
-
 ;;; An enumeration is a list of signs ordered in surface order
 ;;; due to lexical ambiguity a surface form may have more than one enumeration
 ;;; So the first task is to map a surface form (ordered list of phons) to a set
@@ -395,7 +393,7 @@
 (defun parse (sentence)
   (mapcar
     #'(lambda (x)
-        (setf (sign-sem x) (funcall (if *eta-normalize*  'eta-normalize 'identity) (sign-sem x)))
+        (setf (sign-sem x) (funcall (if (*state* 'eta-normalize)  'eta-normalize 'identity) (sign-sem x)))
         x)
     (mapcan
       #'(lambda (x)
