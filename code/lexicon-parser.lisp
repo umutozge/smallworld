@@ -45,9 +45,9 @@
                      (store nil (cons entry store)))
                     ((eq entry :eof) store))))))
 
-(defun split-entry (entry) 
+(defun split-entry (entry)
   (let ((buffer (make-string 1000))
-        (pos 0) 
+        (pos 0)
         (category)
         (interpretation)
         (forms))
@@ -78,7 +78,7 @@
               (progn
                 (setf (aref word-buffer pos) current-char)
                 (incf pos))
-              (progn 
+              (progn
                 (if (not (zerop pos))
                     (let* ((word (string-upcase (subseq word-buffer 0 pos)))
                            (int? (parse-integer word :junk-allowed t)))
@@ -102,7 +102,7 @@
 
 (defun parse-sem (sem)
   (labels ((lambda-p (expr)
-             (and 
+             (and
                (consp expr)
                (= (length expr) 3)
                (member (car expr) '(lam forall exists))))
@@ -121,7 +121,7 @@
                     (list (car sem) (cadr sem) (parse (cddr sem))))
                    (t
                     (r-adjoin
-                      (list 
+                      (list
                         (parse (car sem))
                         (parse (cadr sem)))
                       (parse (cddr sem)))))))
@@ -130,7 +130,7 @@
 
 ; (defun parse-sem (sem)
 ;   (labels ((lambda-p (expr)
-; 					 (and 
+; 					 (and
 ; 					   (consp expr)
 ; 					   (= (length expr) 3)
 ; 					   (equal (car expr) 'lam)))
@@ -149,7 +149,7 @@
 ; 						 (list 'lam (cadr sem) (parse (cddr sem))))
 ; 						(t
 ; 						  (r-adjoin
-; 							(list 
+; 							(list
 ; 							  (parse (car sem))
 ; 							  (parse (cadr sem)))
 ; 							(parse (cddr sem)))))))
@@ -157,16 +157,16 @@
 ; 	  (parse (aux:string-to-list newsem)))))
 
 (defun generate-entry-list ()
-  (mapcar 
+  (mapcar
     #'(lambda (x)
         (let ((syn (car x))
               (sem (cadr x))
               (tokens (caddr x)))
-          (list 
+          (list
             (parse-category (tokenize-category syn))
             (parse-sem sem)
             (aux:string-to-list tokens))))
-    (mapcar 
+    (mapcar
       #'split-entry
       (read-entries))))
 

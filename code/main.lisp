@@ -56,6 +56,7 @@
             #'(lambda (sign)
                (format t "~A~%" sign)
                (format t "~%~A~%" (pprinter:print-text (sign-sem sign)))
+               (format t "~%~A~%" (pprinter:print-tex (sign-sem sign)))
                 )
             (uniq-parses (parse sentence)))
           ""))))

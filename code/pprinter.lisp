@@ -6,25 +6,19 @@
 (defparameter pprinter::*logical-constants*
   '(cond and or neg))
 
-(defparameter pprinter::*logical-operators*
+(defparameter pprinter::*operators*
   '(lam forall exists))
-
-(in-package pprinter)
 
 ;; TODO
 (load "/Users/umut/res/github/smallworld/code/aux.lisp")
 
-;; TODO
-(defparameter *input*
-  '(FORALL X
-           ((COND (WOMAN X))
-            (FORALL G381 ((COND (BOOK G381)) ((READ G381) X))))))
+(in-package pprinter)
 
 (defun logical-constant-p (form)
   (member form *logical-constants*))
 
 (defun operator-p (form)
-  (member form *logical-operators*))
+  (member form *operators*))
 
 (defun transform-atom (form)
   (cond ((= 1 (aux:symbol-length form)) form)
@@ -57,12 +51,48 @@
                  (parse (second form))))))
 
 (defun print-text (form)
-  (aux:translate-string-word
-    (parse form)
-    `(("forall" . ,(string #\U2200))
-      ("exists" . ,(string #\U2203))
-      ("and"    . ,(string #\U2227))
-      ("or"     . ,(string #\U2228))
-      ("cond"   . ,(string #\U2283))
-      ("lam"    . ,(string #\U1D6CC)))
-    ))
+  (apply
+    #'concatenate
+    'string
+    (let ((table `(("forall" . ,(string #\U2200))
+                   ("exists" . ,(string #\U2203))
+                   ("and"    . ,(concatenate 'string " " (string #\U2227) " "))
+                   ("neg"    . ,(concatenate 'string " " (string #\U223C) " "))
+                   ("or"     . ,(concatenate 'string " " (string #\U2228) " "))
+                   ("cond"   . ,(concatenate 'string " " (string #\U2283) " "))
+                   ("lam"    . ,(string #\U1D6CC)))
+                 ))
+      (mapcar
+        #'(lambda (x)
+            (let ((match (assoc x table :test #'string-equal)))
+              (cond (match (rest match))
+                    ((or (string= x "'") (string= x ".")) x)
+                    ;((= 1 (length x)) (concatenate 'string x " "))
+                    ;((and (= 3 (length x)) (char= (aref x 1) #\_))
+                    ; (concatenate 'string x " "))
+                    (t x))))
+        (remove-if
+                  #'(lambda (x) (string= x " "))
+                  (sb-unicode:words (parse form)))))))
+
+(defun print-tex (form)
+  (apply
+    #'concatenate
+    'string
+    (let ((table '(("forall" . "\\forall")
+                   ("exists" . "\\exists")
+                   ("and"    . "\\land")
+                   ("neg"    . "\\neg")
+                   ("or"     . "\\lor")
+                   ("cond"   . "\\rightarrow")
+                   ("lam"    . "\\lambda"))
+                 ))
+      (mapcar
+        #'(lambda (x)
+            (let ((match (assoc x table :test #'string-equal)))
+              (cond (match (rest match))
+                    ((or (string= x "'") (string= x ".")) x)
+                    (t x))))
+        (remove-if
+                  #'(lambda (x) (string= x "A"))
+                  (sb-unicode:words (parse form)))))))

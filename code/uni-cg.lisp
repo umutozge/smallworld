@@ -1,4 +1,4 @@
-;;; 
+;;;
 ;;; A toy implementation of Combinatory Categorial Grammar
 ;;;
 ;;; Syntax is driven via term unification with feature matrices
@@ -20,7 +20,7 @@
 (load "lexicon-parser.lisp")
 (load "unifier.lisp")
 
-; (defpackage :uni-cg 
+; (defpackage :uni-cg
 ;   (:use :common-lisp)
 ;   (:export :parse
 ;            :uniq-parses
@@ -28,7 +28,7 @@
 ;            :sign-sem
 ;            :*lexicon*
 ; 		   ))
-; 
+;
 ; (in-package uni-cg)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -36,8 +36,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;; A sign is a triple <phon,syn,sem>
-;;; 
-;;; phon: symbol 
+;;;
+;;; phon: symbol
 ;;; syn: a feature structure (recursive alist of attribute value pairs)
 ;;; sem: lambda term
 
@@ -50,12 +50,12 @@
 ;;;;    (Syntactic) Categories    ;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;;; A category is a feature structure in 
-;;; the form of an alist, you can think 
+;;; A category is a feature structure in
+;;; the form of an alist, you can think
 ;;; of it as an attribute value matrice as well.
-;;; Categories are read from a lexicon file (default: lexicon.lisp) 
+;;; Categories are read from a lexicon file (default: lexicon.lisp)
 ;;; E.g.
-;;; 
+;;;
 ;;;  ((cat n) (agr +) (fin -))
 ;;;
 
@@ -114,7 +114,7 @@
             (do ((count 0 (+ 1 count))
                  (item
                    (read instr nil 'eof)
-				   (read instr nil 'eof)))
+                   (read instr nil 'eof)))
                 ((eq item 'eof) count)
                 (push item *lexical-rules*)))))
 
