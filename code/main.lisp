@@ -3,19 +3,7 @@
 (declaim (optimize (speed 0) (safety 3) (debug 3)))
 
 (load "models.lisp")
-(load "uni-cg.lisp")
 (load "pprinter.lisp")
-
-;; init a global *state* closure available everywhere
-(setf  (symbol-function '*state*)
-  (let ((table (make-hash-table)))
-    #'(lambda (key &optional (value '<NULL>))
-      (if (not (equal value '<NULL>) )
-          (setf (gethash key table) value)
-          (gethash key table)))))
-
-;; decorate *state*
-(*state* 'eta-normalize t)
 
 
 (defun proc-input (input)
@@ -106,12 +94,23 @@
     nil))
 
 (defun main ()
+  ;; init a global *state* closure available everywhere
+  (setf  (symbol-function '*state*)
+         (let ((table (make-hash-table)))
+           #'(lambda (key &optional (value '<NULL>))
+               (if (not (equal value '<NULL>) )
+                   (setf (gethash key table) value)
+                   (gethash key table)))))
+  ;; decorate *state*
+  (*state* 'eta-normalize t)
   (*state* 'project-path (second (command-line)))
+  (*state* 'lexicon-path (aux:string-to-pathname (*state* 'project-path) "/_lexicon.lisp" ))
+  (load "uni-cg.lisp")
   (run-program "/usr/bin/clear" nil :output *standard-output*)
   (format t "Welcome to SmallWorld~%~%An educational software for computational natural langauge semantics~%Type :help for help, :quit for quit.~%")
   (format t "~%~%Initing parser...")
-  (init-parser (*state* 'project-path))
-  (*state* 'vocab (funcall *lexicon* :keys))
+  (init-parser)
+  (*state* 'vocab (funcall (*state* 'lexicon) :keys))
   (format t "~%")
   (format t "done~%~%")
   (loop
