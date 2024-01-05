@@ -102,14 +102,15 @@
 ;; A functional wrappaer to interact with the lexicon
 
 (defun lexicon (&rest input)
-  (apply (*state* 'lexicon) input))
+  (apply (*state* :lexicon) input))
 
 
-(defun read-lexicon (&key (path (*state* 'lexicon-path)))
+(defun read-lexicon (&key (path (*state* :debug-lexicon-path)))
   "Reads lexical entries from path, parses them into signs, and stores them in a aux:multi-set-table (see aux.lisp).
-   the global var (*state* 'lexicon) ends up pointing to a closure where one can add, get or 
+   the global var (*state* :lexicon) ends up pointing to a closure where one can add, get or 
    query lexical entries using the top level phon feature.
-   The closure (*state* 'lexicon) is a mapping from phon to the list of signs associated with that phon"
+   The closure (*state* :lexicon) is a mapping from phon to the list of signs associated with that phon"
+  (format t "PATH arg: ~A" path)
   (format t "~%Reading lexicon...")
   (with-open-file (instr path :direction :input)
     (format t "Read ~A items.~%"
@@ -326,7 +327,7 @@
 (defun parse (sentence)
   (mapcar
     #'(lambda (x)
-        (setf (sign-sem x) (funcall (if (*state* :eta-normalize)  :eta-normalize 'identity) (sign-sem x)))
+        (setf (sign-sem x) (funcall (if (*state* :eta-normalize)  #'eta-normalize 'identity) (sign-sem x)))
         x)
     (mapcan
       #'(lambda (x)

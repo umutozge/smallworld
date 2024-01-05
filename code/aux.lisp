@@ -1,4 +1,4 @@
-	;;;
+;;;
 ;;; Some auxiliary functions
 ;;;
 
@@ -14,6 +14,7 @@
            :csv-to-str-list
            :one-char-sym-p
            :shuffle-list
+           :symbol=
            :translate-string-char
            :translate-string-word
            :random-num-with-n-digits
@@ -35,6 +36,7 @@
            :tree2qtree))
 
 (in-package aux)
+
 
 (defmacro flip-bool (b)
   `(setf ,b (not ,b)))
@@ -123,6 +125,17 @@
   "Graham's On Lisp, p 56"
   (apply #'format *query-io* args)
   (read *query-io*))
+
+
+;;;;;;;;;;;;;;;;;;
+;; SYMBOL UTILS ::
+;;;;;;;;;;;;;;;;;;
+
+
+(defun symbol= (a b)
+  "ignore their packages in comparin symbols"
+  (string= (symbol-name a) (symbol-name b)))
+
 
 (defun gensym-p (sym)
   (let ((name (symbol-name sym)))

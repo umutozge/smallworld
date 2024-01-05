@@ -9,13 +9,15 @@
 
 
 (defpackage :lexicon-parser
-  (:use :common-lisp :common-lisp-user)
+  (:import-from :common-lisp-user #:*state* #:lam #:forall #:exists)
+  (:use :common-lisp)
   (:nicknames :lp)
   (:export :parse-lexicon))
 
 (load "aux.lisp")
 (load "read-macros.lisp")
 (load "lalr.lisp")
+
 
 (in-package lexicon-parser)
 
@@ -33,7 +35,7 @@
               #'(lambda (x) (or
                               (funcall 'aux:empty-string-p x)
                               (funcall 'aux:starts-with-p x ";")))
-              (with-open-file (str (common-lisp-user::*state* 'common-lisp-user::lexicon-path) :direction :input)
+              (with-open-file (str (*state* :lexicon-path) :direction :input)
                 (do ((entry (read-line str nil :eof) (read-line str nil :eof))
                      (store nil (cons entry store)))
                     ((eq entry :eof) store))))))
@@ -98,7 +100,7 @@
              (and
                (consp expr)
                (= (length expr) 3)
-               (member (car expr) '(lam forall exists))))
+               (print (member (print (car expr)) '(lam forall exists)))))
            (r-adjoin (expr adjunct)
              (if (null adjunct)
                  expr
@@ -118,36 +120,9 @@
                         (parse (car sem))
                         (parse (cadr sem)))
                       (parse (cddr sem)))))))
-    (let ((newsem (aux:translate-string-char sem '((#\\ . #\!) (#\' . #\Space)))))
+    (let ((newsem (aux:translate-string-char (print sem) '((#\\ . #\!) (#\' . #\Space)))))
       (parse (aux:string-to-list newsem)))))
 
-; (defun parse-sem (sem)
-;   (labels ((lambda-p (expr)
-; 					 (and
-; 					   (consp expr)
-; 					   (= (length expr) 3)
-; 					   (equal (car expr) 'lam)))
-; 		   (r-adjoin (expr adjunct)
-; 					 (if (null adjunct)
-; 					   expr
-; 					   (list expr adjunct)))
-; 		   (parse (sem)
-; 				  (cond ((atom sem)
-; 						 sem)
-; 						((endp sem)
-; 						 nil)
-; 						((= 1 (length sem))
-; 						 (parse (car sem)))
-; 						((lambda-p sem)
-; 						 (list 'lam (cadr sem) (parse (cddr sem))))
-; 						(t
-; 						  (r-adjoin
-; 							(list
-; 							  (parse (car sem))
-; 							  (parse (cadr sem)))
-; 							(parse (cddr sem)))))))
-; 	(let ((newsem (aux:translate-string-char sem '((#\\ . #\!) (#\' . #\Space)))))
-; 	  (parse (aux:string-to-list newsem)))))
 
 (defun generate-entry-list ()
   (mapcar
@@ -222,7 +197,7 @@
   (labels ((feature-abrv-p (feat)
              (equal (car feat) 'fabv))
            (lookup-feature-name (fvalue)
-             (let ((val  (rassoc fvalue (common-lisp-user::*state* 'common-lisp-user::feature-dictionary) :test #'member)))
+             (let ((val  (rassoc fvalue (*state* :feature-dictionary) :test #'member)))
                (if val
                    (car val)
                    (error (format nil "ERROR: Feature value ~a is unknown." fvalue)))))
@@ -232,7 +207,10 @@
                    (list (lookup-feature-name feat) feat))
                  (let* ((name (car feat))
                         (value (cadr feat))
-                        (value-valid? (member value (assoc name (common-lisp-user::*state* 'common-lisp-user::feature-dictionary)))))
+                        (value-valid? (member value (assoc
+                                                      name
+                                                      (*state*
+                                                        :feature-dictionary)))))
                    (if value-valid?
                        feat
                        (error (format nil "ERROR: ~a is an invalid value for ~a." value name))))))
@@ -249,9 +227,9 @@
                  (expand-cat
                    (update-cat-with-feature cat (car features))
                    (cdr features)))))
-    (let ((cat-features (cdr (assoc (car cat) (common-lisp-user::*state* 'common-lisp-user::category-bundle-symbols)**)))
+    (let ((cat-features (cdr (assoc (car cat) (*state* :category-bundle-symbols))))
           (add-features (cdr cat)))
-      (expand-cat (copy-list (common-lisp-user::*state* 'common-lisp-user::base-cat-template)) (append cat-features 
+      (expand-cat (copy-list (*state* :base-cat-template)) (append cat-features 
                                                                                      (mapcar 
                                                                                        #'expand-feature
                                                                                        add-features))))))
@@ -260,8 +238,8 @@
   (labels ((build-entry (phon syn sem)
              `((phon ,phon)
                (syn ,syn)
-               (sem ,(sublis (list (cons '$ phon)) sem)))))
-    (with-open-file (str (common-lisp-user::*state* 'common-lisp-user::debug-lexicon-path) :direction :output)
+               (sem ,(sublis (list (cons 'common-lisp-user::$ phon)) sem)))))
+    (with-open-file (str (*state* :debug-lexicon-path) :direction :output)
       (dolist (entry entries)
         (let ((syn (car entry))
               (sem (cadr entry))
@@ -275,14 +253,14 @@
 
 (defun parse-lexicon ()
   (format t "~%Parsing the lexicon found at ~a . . .~%"
-          (pathname-name (print (common-lisp-user::*state* 'common-lisp-user::lexicon-path))))
+          (pathname-name (*state* :lexicon-path)))
   "then add items to the lalr *lexicon* on the basis of *feature-dictionary*"
-  (dolist (x (common-lisp-user::*state* 'common-lisp-user::feature-dictionary))
+  (dolist (x (*state* :feature-dictionary))
     (dolist (y (cdr x))
       (push (list y 'fval) *lexicon*))
     (push (list (car x) 'fname) *lexicon*))
   "then add *category-bundle-symbols* as  acat items to the lalr *lexicon*"
-  (dolist (x (common-lisp-user::*state* 'common-lisp-user::category-bundle-symbols))
+  (dolist (x (*state* :category-bundle-symbols))
     (push (list (car x) 'acat) *lexicon*))
   (proc-entries
     (generate-entry-list))
