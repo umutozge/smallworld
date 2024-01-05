@@ -2,7 +2,6 @@
 
 (declaim (optimize (speed 0) (safety 3) (debug 3)))
 
-(load "models.lisp")
 (load "pprinter.lisp")
 
 
@@ -11,13 +10,6 @@
 		((:help :h)
 		 (display-help))
 		((:quit :q) (princ "bye, come again!") (terpri) (quit))
-		((:refresh-model :rm)
-		 (format t "Generating a random model...~%")
-		 (funcall #'models:refresh-model))
-		((:show-model :sm)
-		 (models:display-model))
-		((:interp-form :if)
-		 (print (interpret-form)) (terpri))
 		((:show-vocab :sv)
 		 (print (*state* 'vocab)) (terpri))
 		((:switch-eta :se)
@@ -26,12 +18,8 @@
 		 (terpri) (princ (parse-expr)) (terpri) (terpri))
 		((:parse-file :pf)
 		 (parse-file) (terpri))
-		((:interp-exp :ie)
-		 (print (interpret-expr)) (terpri) (terpri))
 		(otherwise (princ "unknown command") (terpri))))
 
-(defun interpret-form ()
-	(models:interpret (read)))
 
 (defun parse-file (&optional fname)
 	(let* ((filename (or fname (read-line)))
@@ -59,15 +47,12 @@
             (uniq-parses (parse sentence)))
           ""))))
 
-(defun interpret-expr ()
-  (models:interpret (sign-sem (parse-expr))))
-
 (defun display-help ()
   (format t "~%")
   (format t ":gen-model (:gm)		-- generate a random model~%")
   (format t ":show-model (:sm)		-- display the current loaded model~%")
-  (format t ":refresh-model (:rm)		-- generate a new random model~%")
-  (format t ":parse (:p) <sentence>	        -- parse the provided sentence into an applicative form~%")
+  (format t ":refresh-model (:rm)	-- generate a new random model~%")
+  (format t ":parse (:p) <sentence>	-- parse the provided sentence into an applicative form~%")
   (format t ":interp-form (:if) <form>	-- interpret the provided applicative form~%")
   (format t ":interp-exp (:is) <expr>	-- parse and interpret the provided expression~%")
   (format t ":show-vocab (:sv)		-- display the vocabulary~%")
@@ -83,7 +68,7 @@
         (return x))))
 
 (defun switch-eta-normalization ()
-  (*state* 'eta-normalize (not (*state* 'eta-normalize))))
+  (*state* :eta-normalize (not (*state* :eta-normalize))))
 
 (defun command-line ()
   (or
@@ -102,14 +87,28 @@
                    (setf (gethash key table) value)
                    (gethash key table)))))
   ;; decorate *state*
-  (*state* 'eta-normalize t)
+  (*state* :eta-normalize t)
+  (*state* 'lexicon (aux:multiset-table))
   (*state* 'project-path (second (command-line)))
-  (*state* 'lexicon-path (aux:string-to-pathname (*state* 'project-path) "/_lexicon.lisp" ))
-  (load "uni-cg.lisp")
+  (*state* 'debug-lexicon-path (aux:string-to-pathname (*state* 'project-path) "/_lexicon.lisp" ))
+  (if (probe-file (*state* 'debug-lexicon-path))
+      (delete-file (*state* 'debug-lexicon-path)))
+  (*state* 'lexicon-path (aux:string-to-pathname (*state* 'project-path) "/lexicon.lisp" ))
+  (*state* 'theory-path (aux:string-to-pathname (*state* 'project-path) "/theory.lisp"))
+  (format t "~%nReading the theory found at ~a . . .~%" (pathname-name (*state* 'theory-path)))
+  (*state* 'theory (aux:read-from-file (*state* 'theory-path)))
+  (*state* 'base-cat-template       (cadr (assoc 'base-cat-template (*state* 'theory))))
+  (*state* 'feature-dictionary      (print  (cdr  (assoc 'feature-dictionary (*state* 'theory)))))
+  (*state* 'category-bundle-symbols (cdr  (assoc 'category-bundle-symbols (*state* 'theory))))
+
+
   (run-program "/usr/bin/clear" nil :output *standard-output*)
   (format t "Welcome to SmallWorld~%~%An educational software for computational natural langauge semantics~%Type :help for help, :quit for quit.~%")
   (format t "~%~%Initing parser...")
+
+  (load "uni-cg.lisp")
   (init-parser)
+
   (*state* 'vocab (funcall (*state* 'lexicon) :keys))
   (format t "~%")
   (format t "done~%~%")

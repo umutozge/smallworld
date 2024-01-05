@@ -11,7 +11,7 @@
 (defpackage :lexicon-parser
   (:use :common-lisp :common-lisp-user)
   (:nicknames :lp)
-  (:export :run))
+  (:export :parse-lexicon))
 
 (load "aux.lisp")
 (load "read-macros.lisp")
@@ -19,13 +19,6 @@
 
 (in-package lexicon-parser)
 
-(defvar *lexicon-file-path*)
-(defvar *theory-file-path*)
-(defvar *debug-lexicon-path*)
-(defvar *theory*)
-(defvar *base-cat-template*)
-(defvar *feature-dictionary*)
-(defvar *category-bundle-symbols*)
 (defparameter *end-marker* '$)
 
 
@@ -40,7 +33,7 @@
               #'(lambda (x) (or
                               (funcall 'aux:empty-string-p x)
                               (funcall 'aux:starts-with-p x ";")))
-              (with-open-file (str *lexicon-file-path* :direction :input)
+              (with-open-file (str (common-lisp-user::*state* 'common-lisp-user::lexicon-path) :direction :input)
                 (do ((entry (read-line str nil :eof) (read-line str nil :eof))
                      (store nil (cons entry store)))
                     ((eq entry :eof) store))))))
@@ -174,19 +167,6 @@
 ;;;;          Parsing       ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defparameter *grammar*
-  '((cat --> acat fstr 		  #'(lambda (acat fs) (expand-base-category (cons (cadr acat) fs))))
-    (cat --> op cat cp 		  #'(lambda (op cat cp) cat))
-    (cat --> cat slash cat	#'(lambda (cat1 slash cat2) (list (list 'in cat2) (list 'dir (expand-slash slash)) (list 'out cat1))))
-    (fstr --> ob feat f cb  #'(lambda (ob feat f cb) (cons feat f)))
-    (fstr -->         		  #'(lambda () nil))
-    (f -->          		    #'(lambda () nil))
-    (f --> feat f       	  #'(lambda (feat f) (cons feat f)))
-    (feat --> fname eq feat #'(lambda (fname eq feat) (list (cadr fname) (cadr feat))))
-    (feat --> fval      	  #'(lambda (fval) (list 'fabv (cadr fval))))))
-
-(defparameter *lexforms* '(acat ob cb op cp slash eq fname fval))
-
 (defparameter *lexicon* '((ob ob)
                           (cb cb)
                           (op op)
@@ -198,7 +178,20 @@
                           ))
 
 (eval
-  (lalr:make-parser *grammar* *lexforms* '$))
+  (let ((grammar
+          '((cat --> acat fstr 		  #'(lambda (acat fs) (expand-base-category (cons (cadr acat) fs))))
+            (cat --> op cat cp 		  #'(lambda (op cat cp) cat))
+            (cat --> cat slash cat	  #'(lambda (cat1 slash cat2) (list (list 'in cat2) (list 'dir (expand-slash slash)) (list 'out cat1))))
+            (fstr --> ob feat f cb        #'(lambda (ob feat f cb) (cons feat f)))
+            (fstr -->         		  #'(lambda () nil))
+            (f -->          		  #'(lambda () nil))
+            (f --> feat f       	  #'(lambda (feat f) (cons feat f)))
+            (feat --> fname eq feat       #'(lambda (fname eq feat) (list (cadr fname) (cadr feat))))
+            (feat --> fval      	  #'(lambda (fval) (list 'fabv (cadr fval))))) 
+          )
+        (lexforms
+          '(acat ob cb op cp slash eq fname fval)))
+    (lalr:make-parser grammar lexforms '$)))
 
 (defun parse-category (words)
   (let ((new-words (append words (list *end-marker*))))
@@ -229,7 +222,7 @@
   (labels ((feature-abrv-p (feat)
              (equal (car feat) 'fabv))
            (lookup-feature-name (fvalue)
-             (let ((val  (rassoc fvalue *feature-dictionary* :test #'member)))
+             (let ((val  (rassoc fvalue (common-lisp-user::*state* 'common-lisp-user::feature-dictionary) :test #'member)))
                (if val
                    (car val)
                    (error (format nil "ERROR: Feature value ~a is unknown." fvalue)))))
@@ -239,7 +232,7 @@
                    (list (lookup-feature-name feat) feat))
                  (let* ((name (car feat))
                         (value (cadr feat))
-                        (value-valid? (member value (assoc name *feature-dictionary*))))
+                        (value-valid? (member value (assoc name (common-lisp-user::*state* 'common-lisp-user::feature-dictionary)))))
                    (if value-valid?
                        feat
                        (error (format nil "ERROR: ~a is an invalid value for ~a." value name))))))
@@ -256,19 +249,19 @@
                  (expand-cat
                    (update-cat-with-feature cat (car features))
                    (cdr features)))))
-    (let ((cat-features (cdr (assoc (car cat) *category-bundle-symbols*)))
+    (let ((cat-features (cdr (assoc (car cat) (common-lisp-user::*state* 'common-lisp-user::category-bundle-symbols)**)))
           (add-features (cdr cat)))
-      (expand-cat (copy-list *base-cat-template*) (append cat-features 
-                                                          (mapcar 
-                                                            #'expand-feature
-                                                            add-features))))))
+      (expand-cat (copy-list (common-lisp-user::*state* 'common-lisp-user::base-cat-template)) (append cat-features 
+                                                                                     (mapcar 
+                                                                                       #'expand-feature
+                                                                                       add-features))))))
 
 (defun proc-entries (entries)
   (labels ((build-entry (phon syn sem)
              `((phon ,phon)
                (syn ,syn)
                (sem ,(sublis (list (cons '$ phon)) sem)))))
-    (with-open-file (str *debug-lexicon-path* :direction :output)
+    (with-open-file (str (common-lisp-user::*state* 'common-lisp-user::debug-lexicon-path) :direction :output)
       (dolist (entry entries)
         (let ((syn (car entry))
               (sem (cadr entry))
@@ -280,30 +273,17 @@
 ;;;;       Main drive       ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun run (project-path)
-  (in-package lexicon-parser)
-  "first read the theory"
-  (format t "~%Reading the theory found at ~a . . .~%"
-          (pathname-name (setf *theory-file-path* (aux:string-to-pathname project-path "/theory.lisp"))))
-  (setf *theory* (aux:read-from-file *theory-file-path*))
-  (setf *base-cat-template* (cadr (assoc 'base-cat-template *theory*)))
-  (setf *feature-dictionary* (cdr (assoc 'feature-dictionary *theory*)))
-  (setf *category-bundle-symbols* (cdr (assoc 'category-bundle-symbols *theory*)))
+(defun parse-lexicon ()
   (format t "~%Parsing the lexicon found at ~a . . .~%"
-          (pathname-name (setf *lexicon-file-path* (aux:string-to-pathname project-path "/lexicon.lisp"))))
+          (pathname-name (print (common-lisp-user::*state* 'common-lisp-user::lexicon-path))))
   "then add items to the lalr *lexicon* on the basis of *feature-dictionary*"
-  (dolist (x *feature-dictionary*)
+  (dolist (x (common-lisp-user::*state* 'common-lisp-user::feature-dictionary))
     (dolist (y (cdr x))
       (push (list y 'fval) *lexicon*))
     (push (list (car x) 'fname) *lexicon*))
   "then add *category-bundle-symbols* as  acat items to the lalr *lexicon*"
-  (dolist (x *category-bundle-symbols*)
+  (dolist (x (common-lisp-user::*state* 'common-lisp-user::category-bundle-symbols))
     (push (list (car x) 'acat) *lexicon*))
-  "set the path for the debug lexicon, deleting any older version -- this will be read by uni-cg module"
-  (setf *debug-lexicon-path* (aux:string-to-pathname project-path "/_lexicon.lisp" ))
-  (if (probe-file *debug-lexicon-path*)
-      (delete-file *debug-lexicon-path*))
   (proc-entries
     (generate-entry-list))
-  (in-package common-lisp-user)
   )

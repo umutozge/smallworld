@@ -98,7 +98,12 @@
 ;;;;    Lexicon Management        ;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(*state* 'lexicon (aux:multiset-table))
+
+;; A functional wrappaer to interact with the lexicon
+
+(defun lexicon (&rest input)
+  (apply (*state* 'lexicon) input))
+
 
 (defun read-lexicon (&key (path (*state* 'lexicon-path)))
   "Reads lexical entries from path, parses them into signs, and stores them in a aux:multi-set-table (see aux.lisp).
@@ -113,37 +118,13 @@
                    (read instr nil 'eof)
                    (read instr nil 'eof)))
                 ((eq item 'eof) count)
-                (lex-put (construct-sign item))))))
+                (let ((sign (construct-sign item)))
+                  (lexicon (sign-phon sign) sign))))))
 
 (defun construct-sign (lex)
   (make-sign :phon (cadr (assoc 'phon lex))
              :syn (unifier:refresh-vars (cadr (assoc 'syn lex)))
              :sem (cadr (assoc 'sem lex))))
-
-;; interface functions to talk to *(*state* 'lexicon) closure
-
-(defun lex-get (phon)
-  "looks up entries associated with phon -- error if not present
-   use lex-check to check existence"
-  (funcall (*state* 'lexicon)  phon))
-
-(defun lex-put (sign)
-  (funcall (*state* 'lexicon) (sign-phon sign) sign))
-
-(defun lex-count ()
-  "gives the total number of phon TYPES"
-  (funcall (*state* 'lexicon) :count))
-
-(defun lex-check (phon)
-  "whether phon exists in the lexicon"
-  (funcall (*state* 'lexicon) :check phon))
-
-(defun lex-list ()
-  "list the current phons in the lexicon"
-  (let ((ht (funcall (*state* 'lexicon) ':get-table)))
-    (maphash
-      #'(lambda (key val) (format t "~%~A" key))
-      ht)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;         Combinators          ;;;;
@@ -254,7 +235,7 @@
       enums
       (generate-enums
         (cdr sentence)
-        (let ((entries (lex-get (car sentence))))
+        (let ((entries (lexicon (car sentence))))
           (mapcan 
             #'(lambda (x)
                 (mapcar 
@@ -345,7 +326,7 @@
 (defun parse (sentence)
   (mapcar
     #'(lambda (x)
-        (setf (sign-sem x) (funcall (if (*state* 'eta-normalize)  'eta-normalize 'identity) (sign-sem x)))
+        (setf (sign-sem x) (funcall (if (*state* :eta-normalize)  :eta-normalize 'identity) (sign-sem x)))
         x)
     (mapcan
       #'(lambda (x)
@@ -369,5 +350,5 @@
 ;;;
 
 (defun init-parser ()
-  (lexicon-parser:run (*state* 'project-path))
+  (lexicon-parser:parse-lexicon)
   (read-lexicon))
