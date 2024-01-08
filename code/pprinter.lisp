@@ -67,9 +67,9 @@
             (let ((match (assoc x table :test #'string-equal)))
               (cond (match (rest match))
                     ((or (string= x "'") (string= x ".")) x)
-                    ;((= 1 (length x)) (concatenate 'string x " "))
-                    ;((and (= 3 (length x)) (char= (aref x 1) #\_))
-                    ; (concatenate 'string x " "))
+                    ((= 1 (length x)) (concatenate 'string x " "))
+                    ((and (= 3 (length x)) (char= (aref x 1) #\_))
+                     (concatenate 'string x " "))
                     (t x))))
         (remove-if
                   #'(lambda (x) (string= x " "))

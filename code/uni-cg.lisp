@@ -110,7 +110,6 @@
    the global var (*state* :lexicon) ends up pointing to a closure where one can add, get or 
    query lexical entries using the top level phon feature.
    The closure (*state* :lexicon) is a mapping from phon to the list of signs associated with that phon"
-  (format t "PATH arg: ~A" path)
   (format t "~%Reading lexicon...")
   (with-open-file (instr path :direction :input)
     (format t "Read ~A items.~%"
@@ -146,19 +145,36 @@
 (defun combine (left right)
   "return the combination of signs, or nil if not combinable"
   (let ((lsyn (sign-syn left)) (rsyn (sign-syn right)))
-	(or (let ((result (c-apply lsyn rsyn)))
-		  (if result
-			(make-sign 
-			  :phon (cons (sign-phon left) (sign-phon right))
-			  :syn (cadr result)
-			  :sem (s-apply left right (car result)))))
-		(let ((result (c-compose lsyn rsyn)))
-		  (if result
-			(make-sign 
-			  :phon (cons (sign-phon left) (sign-phon right))
-			  :syn (cadr result)
-			  :sem (s-compose left right (car result))))))))
+    (let* ((cat
+             (or
+               (c-apply lsyn rsyn)
+               (c-compose lsyn rsyn)))
+           (sem 
+             (or
+               (s-apply left right (car cat))
+               (s-compose left right (car cat)))))
+      (if cat 
+          (make-sign 
+            :phon (cons (sign-phon left) (list (sign-phon right)))
+            :syn (cadr cat)
+            :sem sem)))))
 
+;(defun combine (left right)
+;  "return the combination of signs, or nil if not combinable"
+;  (let ((lsyn (sign-syn left)) (rsyn (sign-syn right)))
+;	(or (let ((result (c-apply lsyn rsyn)))
+;		  (if result
+;			(make-sign 
+;			  :phon (cons (sign-phon left) (list (sign-phon right)))
+;			  :syn (cadr result)
+;			  :sem (s-apply left right (car result)))))
+;		(let ((result (c-compose lsyn rsyn)))
+;		  (if result
+;			(make-sign 
+;			  :phon (cons (sign-phon left) (list (sign-phon right)))
+;			  :syn (cadr result)
+;			  :sem (s-compose left right (car result))))))))
+;
 
 ;;; Application
 
