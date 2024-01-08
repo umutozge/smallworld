@@ -90,6 +90,7 @@
                     (#\/ 'FS)
                     (#\\ 'BS)
                     (#\= 'EQ)
+                    (#\* 'SM) ;slash modality
                     (#\+ '+)
                     (#\- '-))
                   store)))))))
@@ -148,6 +149,7 @@
                           (eq eq)
                           (fs slash)
                           (bs slash)
+                          (sm sm)
                           ($ $)
                           ))
 
@@ -155,7 +157,8 @@
   (let ((grammar
           '((cat --> acat fstr 		  #'(lambda (acat fs) (expand-base-category (cons (cadr acat) fs))))
             (cat --> op cat cp 		  #'(lambda (op cat cp) cat))
-            (cat --> cat slash cat	  #'(lambda (cat1 slash cat2) (list (list 'in cat2) (list 'dir (expand-slash slash)) (list 'out cat1))))
+            (cat --> cat slash cat	  #'(lambda (cat1 slash cat2) (list (list 'in cat2) (list 'slash (list (list 'dir (expand-slash slash)) (list 'mode 'dot))) (list 'out cat1))))
+            (cat --> cat slash sm cat	  #'(lambda (cat1 slash mode cat2) (list (list 'in cat2) (list 'slash (list (list 'dir (expand-slash slash)) (list 'mode (expand-mode mode)))) (list 'out cat1))))
             (fstr --> ob feat f cb        #'(lambda (ob feat f cb) (cons feat f)))
             (fstr -->         		  #'(lambda () nil))
             (f -->          		  #'(lambda () nil))
@@ -164,7 +167,7 @@
             (feat --> fval      	  #'(lambda (fval) (list 'fabv (cadr fval))))) 
           )
         (lexforms
-          '(acat ob cb op cp slash eq fname fval)))
+          '(acat ob cb op cp slash sm eq fname fval)))
     (lalr:make-parser grammar lexforms '$)))
 
 (defun parse-category (words)
@@ -191,6 +194,11 @@
   (case (cadr slash)
     (fs 'forward)
     (bs 'backward)))
+
+(defun expand-mode (mode)
+  (case (cadr mode)
+    (sm 'star))
+  )
 
 (defun expand-base-category (cat)
   (labels ((feature-abrv-p (feat)

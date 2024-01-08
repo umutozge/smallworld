@@ -76,7 +76,7 @@
                         (s-syn (cadr match) (cdr path)))))))
            (feature-structure-p (fs)
              "A superficial checker for feature structures"
-             (and (consp fs) (consp (car fs))))          
+             (and (consp fs) (consp (car fs))))
            (attr-val-pair-p (exp)
              (and (consp exp) (= 2 (length exp)))))
     (s-syn fs path)))
@@ -84,7 +84,11 @@
 
 (defun get-dir (fs)
   "return the directionality of a functor -- nil if not a functor"
-  (search-syn fs 'dir))
+  (search-syn fs 'slash 'dir))
+
+(defun get-mode (fs)
+  "return the mode a functor -- nil if not a functor"
+  (search-syn fs 'slash 'mode))
 
 (defun get-output (fs)
   "return the output of a functor -- nil if not a functor"
@@ -207,11 +211,13 @@
 (defun c-compose (lsyn rsyn)
   "combine the cats with composition, if possible"
   (or
-    (and (eq 'forward (get-dir lsyn))
+    (and (eql 'forward (get-dir lsyn))
+         (eql 'dot (get-mode lsyn))
          (let ((result (_compose lsyn rsyn)))
            (if result
                (list result '> 'b))))
-    (and (eq 'backward (get-dir rsyn))
+    (and (eql 'backward (get-dir rsyn))
+         (eql 'dot (get-mode rsyn))
          (let ((result (_compose rsyn lsyn)))
            (if result
                (list result '< 'b))))))
@@ -223,7 +229,7 @@
         (list
           (cons 'in
                 (list (sublis bindings (get-input g))))
-          (cons 'dir (list (get-dir g)))
+          (cons 'slash (list (list 'dir (get-dir g)) (list 'mode (get-mode g))))
           (cons 'out
                 (list (sublis bindings (get-output f))))))))
 
