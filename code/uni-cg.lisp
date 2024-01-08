@@ -130,7 +130,7 @@
 ;;;;         Combinators          ;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;;; see lc-quan.lisp for the notation for interpretations 
+;;; see lc-quan.lisp for the notation for interpretations
 
 (defparameter b-comb
   '(lam f (lam g (lam x (f (g x))))))
@@ -142,66 +142,65 @@
 ;;;;         Combination          ;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+
+(defstruct (combination)
+  left-input
+  right-input
+  output
+  combinator
+  direction
+  )
+
+(defun get-deco (direction combinator)
+  (make-symbol
+    (concatenate 'string
+                 (let ((name (symbol-name combinator)))
+                   (if (string= name "A")
+                       ""
+                       name))
+                 (symbol-name direction))))
+
 (defun combine (left right)
   "return the combination of signs, or nil if not combinable"
   (let ((lsyn (sign-syn left)) (rsyn (sign-syn right)))
-    (let* ((cat
+    (let ((result
              (or
                (c-apply lsyn rsyn)
-               (c-compose lsyn rsyn)))
-           (sem 
-             (or
-               (s-apply left right (car cat))
-               (s-compose left right (car cat)))))
-      (if cat 
-          (make-sign 
-            :phon (cons (sign-phon left) (list (sign-phon right)))
-            :syn (cadr cat)
-            :sem sem)))))
+               (c-compose lsyn rsyn))))
+      (if result
+          (let ((syn (first result))
+                (direction (second result))
+                (combinator (third result)))
+           (make-combination
+             :left-input left
+             :right-input right
+             :output (make-sign
+                       :phon (cons (get-deco direction combinator) (cons (sign-phon left) (list (sign-phon right))))
+                       :syn syn
+                       :sem (s-combine left right direction combinator))
+             :direction direction
+            ))))))
 
-;(defun combine (left right)
-;  "return the combination of signs, or nil if not combinable"
-;  (let ((lsyn (sign-syn left)) (rsyn (sign-syn right)))
-;	(or (let ((result (c-apply lsyn rsyn)))
-;		  (if result
-;			(make-sign 
-;			  :phon (cons (sign-phon left) (list (sign-phon right)))
-;			  :syn (cadr result)
-;			  :sem (s-apply left right (car result)))))
-;		(let ((result (c-compose lsyn rsyn)))
-;		  (if result
-;			(make-sign 
-;			  :phon (cons (sign-phon left) (list (sign-phon right)))
-;			  :syn (cadr result)
-;			  :sem (s-compose left right (car result))))))))
-;
 
 ;;; Application
 
 (defun c-apply (lsyn rsyn)
   "combine the cats with application, if possible"
   (or
-	(and (eq 'forward (get-dir lsyn))
-		 (let ((result (_apply lsyn rsyn)))
-		   (when result
-			 (list 'forward result))))
-	(and (eq 'backward (get-dir rsyn))
-		 (let ((result (_apply rsyn lsyn)))
-		   (when result
-			 (list 'backward result))))))
+    (and (eq 'forward (get-dir lsyn))
+         (let ((result (_apply lsyn rsyn)))
+           (when result
+             (list result '> 'a))))
+    (and (eq 'backward (get-dir rsyn))
+         (let ((result (_apply rsyn lsyn)))
+           (when result
+             (list result '< 'a))))))
 
 (defun _apply (func arg)
   (multiple-value-bind (bindings yes) (unifier:tree-match (get-input func) arg)
-	(if yes 
+	(if yes
 	  (sublis bindings (get-output func)))))
 
-(defun s-apply (left right dir)
-  "handle the semantic side of application"
-  (let ((lsem (sign-sem left))
-		(rsem (sign-sem right)))
-	(if (eq dir 'forward)
-	  (beta-normalize-inner (mk-a lsem rsem))
-	  (beta-normalize-inner (mk-a rsem lsem)))))
 
 ;;; Composition
 
@@ -211,30 +210,43 @@
     (and (eq 'forward (get-dir lsyn))
          (let ((result (_compose lsyn rsyn)))
            (if result
-               (list 'forward result))))
+               (list result '> 'b))))
     (and (eq 'backward (get-dir rsyn))
          (let ((result (_compose rsyn lsyn)))
            (if result
-               (list 'backward result))))))
+               (list result '< 'b))))))
 
 (defun _compose (f g)
   "combine the cats with composition, if possible"
   (multiple-value-bind (bindings yes) (unifier:tree-match (get-input f) (get-output g))
-	(if yes 
-	  (list 
-		(cons 'in 
-			  (list (sublis bindings (get-input g))))
-		(cons 'dir (list (get-dir g)))
-		(cons 'out 
-				  (list (sublis bindings (get-output f))))))))
+    (if yes
+        (list
+          (cons 'in
+                (list (sublis bindings (get-input g))))
+          (cons 'dir (list (get-dir g)))
+          (cons 'out
+                (list (sublis bindings (get-output f))))))))
 
-(defun s-compose (left right dir)
-  "handle the semantic side of composition"
-  (let ((lsem (sign-sem left))
-		(rsem (sign-sem right)))
-	(if (eq dir 'forward)
-	  (beta-normalize-inner (mk-a (mk-a b-comb lsem) rsem))
-	  (beta-normalize-inner (mk-a (mk-a b-comb rsem) lsem)))))
+;;; Semantic composition
+
+(defun s-combine (left right dir combinator)
+  (labels ((s-apply (left right dir)
+             "handle the semantic side of application"
+             (let ((lsem (sign-sem left))
+                   (rsem (sign-sem right)))
+               (if (eq dir '>)
+                   (beta-normalize-inner (mk-a lsem rsem))
+                   (beta-normalize-inner (mk-a rsem lsem)))))
+           (s-compose (left right dir)
+             "handle the semantic side of composition"
+             (let ((lsem (sign-sem left))
+                   (rsem (sign-sem right)))
+               (if (eq dir '>)
+                   (beta-normalize-inner (mk-a (mk-a b-comb lsem) rsem))
+                   (beta-normalize-inner (mk-a (mk-a b-comb rsem) lsem))))))
+    (case combinator
+      (a (s-apply left right dir))
+      (b (s-compose left right dir)))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -253,9 +265,9 @@
       (generate-enums
         (cdr sentence)
         (let ((entries (lexicon (car sentence))))
-          (mapcan 
+          (mapcan
             #'(lambda (x)
-                (mapcar 
+                (mapcar
                   #'(lambda (y)
                       (append x (list y)))
                   entries))
@@ -287,8 +299,8 @@
         (error "Reduce attempt on a short stack")
         (let ((reduct (combine (cadr stack) (car stack))))
           (if reduct
-              (cons 
-                (cons reduct (cddr stack))
+              (cons
+                (cons (combination-output reduct) (cddr stack))
                 tape))))))
 
 (defun p-success (state)
@@ -313,7 +325,7 @@
 
 
 (defun sr-parse (agenda &optional store)
-  (if (endp agenda) 
+  (if (endp agenda)
       store
       (let* ((state (car agenda)))
         (cond ((p-success state)
@@ -327,11 +339,11 @@
                    (sr-parse (cdr agenda) store))) ; no, discard the curren state and go on
               ((not (p-reducible-statep state)) ; compulsory shift
                (sr-parse (cons (p-shift state) (cdr agenda)) store))
-              (t 
+              (t
                (let ((reduct (p-reduce state))
                      (shifted (p-shift state)))
                  (if reduct
-                     (sr-parse (cons 
+                     (sr-parse (cons
                                  reduct
                                  (cons shifted (cdr agenda)))
                                store)
@@ -350,8 +362,7 @@
           (sr-parse (list (cons nil x))))
       (generate-enums sentence))))
 
-;;; Sometimes one would want to "unique" on parses that have
-;;; the same semantics. First, we need an equality predicate
+;;; An equality predicate for semantic interpretations
 
 (defun sign-sem-equalp (s1 s2)
   "two signs are semantically equivalent, if their sems are alpha-equivalent"
@@ -360,7 +371,6 @@
 (defun uniq-parses (set-of-parses)
   "eliminates semantically superous parses -- see aux.lisp for aux:uniq"
   (aux:uniq set-of-parses #'sign-sem-equalp))
-
 
 ;;;
 ;;; Initialization
