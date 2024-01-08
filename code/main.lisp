@@ -19,6 +19,8 @@
      (format t "~{~{~6S~^ ~}~%~}" (aux:partition (*state* 'vocab) 5)) (terpri))
     ((:switch-eta :se)
      (princ (switch-eta-normalization)) (terpri))
+    ((:switch-uniq-parses :su)
+     (princ (switch-uniq-parses)) (terpri))
     ((:parse :p)
      (terpri) (princ (parse-expr)) (terpri) (terpri))
     ((:parse-file :pf)
@@ -54,13 +56,20 @@
                 (format t "~%~A~%" (pprinter:print-tex (sign-sem (cadr item))))
                 (format t "~%------------------------------------------------~%")
                 )
-            (aux:enum (uniq-parses (parse sentence)) 1))
+            (aux:enum
+              (funcall
+                (if (*state* :uniq-parses)
+                    #'uniq-parses
+                    #'identity)
+                (parse sentence))
+              1))
           ""))))
 
 (defun display-help ()
   (let ((data '((":parse (:p) <sentence>" "parse the provided sentence into an applicative form")  
                 (":show-vocab (:sv)" "display the vocabulary")  
                 (":switch-eta (:se)" "turn on/off eta-normalization of logical forms") 
+                (":switch-uniq-parses (:su)" "turn on/off eliminating semantically spurious parses") 
                 (":reload (:rl)" "reload the system") 
                 (":help (:h)" "help") 
                 (":quit (:q)" "quit"))))
@@ -77,6 +86,9 @@
 
 (defun switch-eta-normalization ()
   (*state* :eta-normalize (not (*state* :eta-normalize))))
+
+(defun switch-uniq-parses ()
+  (*state* :uniq-parses (not (*state* :uniq-parses))))
 
 (defun command-line ()
   (or
@@ -99,6 +111,7 @@
 
   ;; decorate *state*
   (*state* :eta-normalize t)
+  (*state* :uniq-parses t)
   (*state* :lexicon (aux:multiset-table))
   (*state* :project-path (cadr (command-line)))
   (*state* :prompt (car (last (str:split #\/ (*state* :project-path)))))
