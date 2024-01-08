@@ -15,7 +15,6 @@
   (:export :parse-lexicon))
 
 (load "aux.lisp")
-(load "read-macros.lisp")
 (load "lalr.lisp")
 
 
@@ -100,7 +99,7 @@
              (and
                (consp expr)
                (= (length expr) 3)
-               (print (member (print (car expr)) '(lam forall exists)))))
+               (member (car expr) '(lam forall exists))))
            (r-adjoin (expr adjunct)
              (if (null adjunct)
                  expr
@@ -120,7 +119,7 @@
                         (parse (car sem))
                         (parse (cadr sem)))
                       (parse (cddr sem)))))))
-    (let ((newsem (aux:translate-string-char (print sem) '((#\\ . #\!) (#\' . #\Space)))))
+    (let ((newsem (aux:translate-string-char sem '((#\\ . #\!) (#\' . #\Space)))))
       (parse (aux:string-to-list newsem)))))
 
 

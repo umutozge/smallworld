@@ -10,6 +10,8 @@
            :uniq
            :tsv-to-list
            :empty-string-p
+           :ensure-list
+           :enum
            :string-to-list
            :csv-to-str-list
            :one-char-sym-p
@@ -17,6 +19,7 @@
            :symbol=
            :translate-string-char
            :translate-string-word
+           :partition
            :random-num-with-n-digits
            :read-file-as-string 
            :read-from-file
@@ -121,6 +124,12 @@
             (concatenate 'string
                          "(" (read-line) ")"))))
 
+
+
+
+
+
+
 (defun prompt (&rest args)
   "Graham's On Lisp, p 56"
   (apply #'format *query-io* args)
@@ -165,6 +174,22 @@
     (stringp str)
     (zerop (length str))))
 
+;;;;;;;;;;;;;;;;
+;;            ;;
+;; List Utils ;;
+;;            ;;
+;;;;;;;;;;;;;;;;
+
+
+(defun ensure-list (x)
+  (if (listp x) x (list x)))
+
+(defun enum (lst &optional (index 0))
+  (if (endp lst)
+      nil
+      (cons
+        (list index (car lst))
+        (enum (cdr lst) (+ index 1)))))
 
 ;;;;;;;;;;;;;;;
 ;;           ;;
@@ -274,30 +299,49 @@
 
 (defun shuffle-list (lst &optional shuffled)
   (labels ((remove-first (item lst)
-						 (if (equal (car lst) item)
-						   (cdr lst)
-						   (cons (car lst) (remove-first item (cdr lst))))))
-	
-  (if (endp lst)
-	shuffled
-	(let ((pick (random-pick lst)))
-	  (shuffle-list (remove-first pick lst) (cons pick shuffled))))))
+             (if (equal (car lst) item)
+                 (cdr lst)
+                 (cons (car lst) (remove-first item (cdr lst))))))
+
+    (if (endp lst)
+        shuffled
+        (let ((pick (random-pick lst)))
+          (shuffle-list (remove-first pick lst) (cons pick shuffled))))))
 
 (defun replace-char-with-str (chr replace-str main-str)
   (let ((pos (position chr main-str)))
-	(if pos
-	  (concatenate 'string 
-				 (subseq main-str 0 pos)
-				 replace-str
-				 (subseq main-str (+ pos 1) (length main-str)))
-	  main-str)))
+    (if pos
+        (concatenate 'string 
+                     (subseq main-str 0 pos)
+                     replace-str
+                     (subseq main-str (+ pos 1) (length main-str)))
+        main-str)))
 
 (defun restore-left-assoc (lst &optional store)
   "restore parentheses left associatively
-  (a b c) => ((a b) c) "
+   (a b c) => ((a b) c) "
   (cond ((endp lst) store)
-		((endp store) (restore-left-assoc (cdr lst) (list (car lst))))
-		(t (restore-left-assoc (cdr lst) (list (list (car store) (car lst)))))))
+        ((endp store) (restore-left-assoc (cdr lst) (list (car lst))))
+        (t (restore-left-assoc (cdr lst) (list (list (car store) (car lst)))))))
+
+(defun partition (lst size)
+  "partition a list into chunks of size size"
+  (labels ((expand-car (lst)
+             (cond 
+               ((endp lst) nil)
+               ((listp (car lst))
+                (if (null (cdr lst))
+                    lst
+                    (cons (append (car lst) (list (cadr lst)))
+                          (cddr lst))))
+               (t (cons (list (car lst)) (cdr lst)))))
+           (_part (lst size count)
+             (cond
+               ((endp lst) nil)
+               ((zerop count) (cons (car lst) (_part (cdr lst) size size)))
+               (t (_part (expand-car lst) size (- count 1))))))
+    (_part lst size size)))
+
 
 (defun random-num-with-n-digits (n)
   (labels ((generate (guess n lowest-num)

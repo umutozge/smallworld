@@ -1,36 +1,44 @@
-#!/opt/homebrew/bin/sbcl --script
+;#!/opt/homebrew/bin/sbcl --script
 
 (declaim (optimize (speed 0) (safety 3) (debug 3)))
+
+(load "~/.sbclrc")
+(require "str")
+;(ql:quickload :str :silent t)
+
 
 (load "pprinter.lisp")
 
 
 (defun proc-input (input)
   (case input
-		((:help :h)
-		 (display-help))
-		((:quit :q) (princ "bye, come again!") (terpri) (quit))
-		((:show-vocab :sv)
-		 (print (*state* 'vocab)) (terpri))
-		((:switch-eta :se)
-		 (princ (switch-eta-normalization)) (terpri))
-		((:parse :p)
-		 (terpri) (princ (parse-expr)) (terpri) (terpri))
-		((:parse-file :pf)
-		 (parse-file) (terpri))
-		(otherwise (princ "unknown command") (terpri))))
+    ((:help :h)
+     (display-help))
+    ((:quit :q) (princ "bye, come again!") (terpri) (quit))
+    ((:show-vocab :sv)
+     (format t "~{~{~6S~^ ~}~%~}" (aux:partition (*state* 'vocab) 5)) (terpri))
+    ((:switch-eta :se)
+     (princ (switch-eta-normalization)) (terpri))
+    ((:parse :p)
+     (terpri) (princ (parse-expr)) (terpri) (terpri))
+    ((:parse-file :pf)
+     (parse-file) (terpri))
+    ((:reload :rl) (main))
+    (otherwise (princ "unknown command") (terpri))))
 
 
 (defun parse-file (&optional fname)
-	(let* ((filename (or fname (read-line)))
-        (sentences (aux:tsv-to-list
-                     (make-pathname :name filename)))
-        (outpath (aux:string-to-pathname filename ".out")))
-          (with-open-file (str outpath :direction :output
-                               :if-does-not-exist :create
-                               :if-exists :overwrite)
-            (dolist (i sentences)
-              (format str (string-downcase "~{~A ~}~%~{~A~%~}~%~%") i (mapcar sign-sem (uniq-parses (parse-expr i)))))))) ; TODO can't display ambiguity
+  (let* ((filename (or fname (read-line)))
+         (sentences (aux:tsv-to-list
+                      (make-pathname :name filename)))
+         (outpath (aux:string-to-pathname filename ".out")))
+    (with-open-file (str outpath :direction :output
+                         :if-does-not-exist :create
+                         :if-exists :overwrite)
+      (dolist (i sentences)
+        (format str (string-downcase "~{~A ~}~%~{~A~%~}~%~%")
+                i
+                (mapcar sign-sem (uniq-parses (parse-expr i)))))))) ; TODO can't display ambiguity
 
 (defun parse-expr (&optional sent)
   (let* ((sentence (or sent (aux:string-to-list (read-line))))
@@ -39,27 +47,27 @@
         (format nil "~A is unknown" unk)
         (progn
           (mapc
-            #'(lambda (sign)
-               (format t "~A~%" sign)
-               (format t "~%~A~%" (pprinter:print-text (sign-sem sign)))
-               (format t "~%~A~%" (pprinter:print-tex (sign-sem sign)))
+            #'(lambda (item)
+                (format t "~%--------------------PARSE ~D--------------------~%" (car item))
+                (format t "~A~%" (cadr item))
+                (format t "~%~A~%" (pprinter:print-text (sign-sem (cadr item))))
+                (format t "~%~A~%" (pprinter:print-tex (sign-sem (cadr item))))
+                (format t "~%------------------------------------------------~%")
                 )
-            (uniq-parses (parse sentence)))
+            (aux:enum (uniq-parses (parse sentence)) 1))
           ""))))
 
 (defun display-help ()
+  (let ((data '((":parse (:p) <sentence>" "parse the provided sentence into an applicative form")  
+                (":show-vocab (:sv)" "display the vocabulary")  
+                (":switch-eta (:se)" "turn on/off eta-normalization of logical forms") 
+                (":reload (:rl)" "reload the system") 
+                (":help (:h)" "help") 
+                (":quit (:q)" "quit"))))
   (format t "~%")
-  (format t ":gen-model (:gm)		-- generate a random model~%")
-  (format t ":show-model (:sm)		-- display the current loaded model~%")
-  (format t ":refresh-model (:rm)	-- generate a new random model~%")
-  (format t ":parse (:p) <sentence>	-- parse the provided sentence into an applicative form~%")
-  (format t ":interp-form (:if) <form>	-- interpret the provided applicative form~%")
-  (format t ":interp-exp (:is) <expr>	-- parse and interpret the provided expression~%")
-  (format t ":show-vocab (:sv)		-- display the vocabulary~%")
-  (format t ":switch-eta (:se)		-- turn on/off eta-normalization of logical forms~%")
-  (format t ":help (:h)			-- help~%")
-  (format t ":quit (:q)			-- quit~%")
-  (format t "~%"))
+  (format t "~{~{~24A~^ -- ~} ~%~}" data)
+  (format t "~%")
+    ))
 
 
 (defun check-vocab (sentence)
@@ -92,7 +100,8 @@
   ;; decorate *state*
   (*state* :eta-normalize t)
   (*state* :lexicon (aux:multiset-table))
-  (*state* :project-path (second (command-line)))
+  (*state* :project-path (cadr (command-line)))
+  (*state* :prompt (car (last (str:split #\/ (*state* :project-path)))))
   (*state* :debug-lexicon-path (aux:string-to-pathname (*state* :project-path) "/_lexicon.lisp" ))
   (if (probe-file (*state* :debug-lexicon-path))
       (delete-file (*state* :debug-lexicon-path)))
@@ -106,8 +115,8 @@
 
 
   (run-program "/usr/bin/clear" nil :output *standard-output*)
-  (format t "Welcome to SmallWorld~%~%An educational software for computational natural langauge semantics~%Type :help for help, :quit for quit.~%")
-  (format t "~%~%Initing parser...")
+  (format t "Welcome to SmallWorld~%~%A linguists' parser based on CCG~%~%Type :help for help, :quit for quit.~%")
+  (format t "~%Initing parser...")
 
   (load "uni-cg.lisp")
   (init-parser)
@@ -116,7 +125,7 @@
   (format t "~%")
   (format t "done~%~%")
   (loop
-    (format t "Ready> ")
+    (format t "~a> " (*state* :prompt))
     (finish-output)
     (proc-input (read))))
 
