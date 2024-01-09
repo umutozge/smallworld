@@ -6,9 +6,7 @@
 (require "str")
 ;(ql:quickload :str :silent t)
 
-
 (load "pprinter.lisp")
-
 
 (defun proc-input (input)
   (case input
@@ -28,6 +26,17 @@
     ((:reload :rl) (main))
     (otherwise (princ "unknown command") (terpri))))
 
+(defun display-help ()
+  (let ((data '((":parse (:p) <sentence>" "parse the provided sentence into an applicative form")  
+                (":show-vocab (:sv)" "display the vocabulary")  
+                (":switch-eta (:se)" "turn on/off eta-normalization of logical forms") 
+                (":switch-uniq-parses (:su)" "turn on/off eliminating semantically spurious parses") 
+                (":reload (:rl)" "reload the system") 
+                (":help (:h)" "help") 
+                (":quit (:q)" "quit"))))
+  (format t "~%")
+  (format t "~{~{~24A~^ -- ~} ~%~}" data)
+  (format t "~%")))
 
 (defun parse-file (&optional fname)
   (let* ((filename (or fname (read-line)))
@@ -65,19 +74,6 @@
               1))
           ""))))
 
-(defun display-help ()
-  (let ((data '((":parse (:p) <sentence>" "parse the provided sentence into an applicative form")  
-                (":show-vocab (:sv)" "display the vocabulary")  
-                (":switch-eta (:se)" "turn on/off eta-normalization of logical forms") 
-                (":switch-uniq-parses (:su)" "turn on/off eliminating semantically spurious parses") 
-                (":reload (:rl)" "reload the system") 
-                (":help (:h)" "help") 
-                (":quit (:q)" "quit"))))
-  (format t "~%")
-  (format t "~{~{~24A~^ -- ~} ~%~}" data)
-  (format t "~%")
-    ))
-
 
 (defun check-vocab (sentence)
   (dolist (x sentence)
@@ -111,7 +107,7 @@
 
   ;; decorate *state*
   (*state* :eta-normalize t)
-  (*state* :uniq-parses t)
+  (*state* :uniq-parses nil)
   (*state* :lexicon (aux:multiset-table))
   (*state* :project-path (cadr (command-line)))
   (*state* :prompt (car (last (str:split #\/ (*state* :project-path)))))
