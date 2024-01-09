@@ -107,7 +107,7 @@
 
   ;; decorate *state*
   (*state* :eta-normalize t)
-  (*state* :uniq-parses t)
+  (*state* :uniq-parses nil)
   (*state* :lexicon (aux:multiset-table))
   (*state* :project-path (cadr (command-line)))
   (*state* :prompt (car (last (str:split #\/ (*state* :project-path)))))
