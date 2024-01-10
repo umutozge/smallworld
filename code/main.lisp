@@ -16,9 +16,11 @@
     ((:show-vocab :sv)
      (format t "~{~{~6S~^ ~}~%~}" (aux:partition (*state* 'vocab) 5)) (terpri))
     ((:switch-eta :se)
-     (princ (switch-eta-normalization)) (terpri))
+     (princ (toggle-flag :eta-normalization)) (terpri))
+    ((:switch-derivation :sd)
+     (princ (toggle-flag :derivation)) (terpri))
     ((:switch-uniq-parses :su)
-     (princ (switch-uniq-parses)) (terpri))
+     (princ (toggle-flag :uniq-parses)) (terpri))
     ((:parse :p)
      (terpri) (princ (parse-expr)) (terpri) (terpri))
     ((:parse-file :pf)
@@ -29,6 +31,7 @@
 (defun display-help ()
   (let ((data '((":parse (:p) <sentence>" "parse the provided sentence into an applicative form")  
                 (":show-vocab (:sv)" "display the vocabulary")  
+                (":switch-derivation (:sd)" "turn on/off display of derivations")  
                 (":switch-eta (:se)" "turn on/off eta-normalization of logical forms") 
                 (":switch-uniq-parses (:su)" "turn on/off eliminating semantically spurious parses") 
                 (":reload (:rl)" "reload the system") 
@@ -60,11 +63,14 @@
           (mapc
             #'(lambda (item)
                 (format t "~%--------------------PARSE ~D--------------------~%" (car item))
-                (format t "~A~%" (cadr item))
-                (format t "~%~A~%" (pprinter:print-text (sign-sem (cadr item))))
-                (format t "~%~A~%" (pprinter:print-tex (sign-sem (cadr item))))
+                (format t "~A~%" (caadr item))
+                (format t "~%~A~%" (pprinter:print-text (sign-sem (caadr item))))
+                (format t "~%~A~%" (pprinter:print-tex (sign-sem (caadr item))))
                 (format t "~%------------------------------------------------~%")
-                )
+                (when (*state* :derivation) 
+                  (format t "~%--------------------DERIV ~D--------------------~%" (car item))
+                  (format t "~A~%" (cadr item))
+                  (format t "~%------------------------------------------------~%")))
             (aux:enum
               (funcall
                 (if (*state* :uniq-parses)
@@ -79,6 +85,10 @@
   (dolist (x sentence)
     (if (not (member x (*state* 'vocab)))
         (return x))))
+
+(defun toggle-flag (flag)
+  (*state* flag (not (*state* flag))))
+
 
 (defun switch-eta-normalization ()
   (*state* :eta-normalize (not (*state* :eta-normalize))))
@@ -107,6 +117,7 @@
 
   ;; decorate *state*
   (*state* :eta-normalize t)
+  (*state* :derivation nil)
   (*state* :uniq-parses nil)
   (*state* :lexicon (aux:multiset-table))
   (*state* :project-path (cadr (command-line)))

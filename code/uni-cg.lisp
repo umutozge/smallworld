@@ -297,7 +297,7 @@
     (if (null tape)
         (error "Shift attempt for empty tape")
         (cons
-          (cons (car tape) stack)
+          (cons (list (car tape)) stack)
           (cdr tape)))))
 
 (defun p-reduce (state reducer)
@@ -306,10 +306,10 @@
         (tape (cdr state)))
     (if (< (length stack) 2)
         (error "Reduce attempt on a short stack")
-        (let ((reduct (funcall reducer (cadr stack) (car stack))))
+        (let ((reduct (funcall reducer (caadr stack) (caar stack))))
           (if reduct
               (cons
-                (cons reduct (cddr stack))
+                (cons (list reduct (cadr stack) (car stack)) (cddr stack))
                 tape)
               )))))
 
@@ -374,7 +374,7 @@
 (defun parse (sentence)
   (mapcar
     #'(lambda (x)
-        (setf (sign-sem x) (funcall (if (*state* :eta-normalize)  #'eta-normalize 'identity) (sign-sem x)))
+        (setf (sign-sem (car x)) (funcall (if (*state* :eta-normalize)  #'eta-normalize 'identity) (sign-sem (car x))))
         x)
     (mapcan
       #'(lambda (x)
@@ -388,8 +388,8 @@
   (alpha-equivalent (sign-sem s1) (sign-sem s2)))
 
 (defun uniq-parses (set-of-parses)
-  "eliminates semantically superous parses -- see aux.lisp for aux:uniq"
-  (aux:uniq set-of-parses #'sign-sem-equalp))
+  "eliminates semantically spurious parses -- see aux.lisp for aux:uniq"
+  (aux:uniq set-of-parses #'(lambda (x y) (sign-sem-equalp (car x) (car y)))))
 
 ;;;
 ;;; Initialization
