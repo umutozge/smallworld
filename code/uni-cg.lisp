@@ -260,8 +260,8 @@
 ;;;;            Parsing           ;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;;; An enumeration is a list of signs ordered in surface order
-;;; due to lexical ambiguity a surface form may have more than one enumeration
+;;; An enumeration is a list of signs ordered in surface order.
+;;; Due to lexical ambiguity a surface form may have more than one enumeration.
 ;;; So the first task is to map a surface form (ordered list of phons) to a set
 ;;; of enumerations
 
@@ -284,12 +284,14 @@
 ;;; stack of stacks.
 
 
-;;; A parser state is a pair of a stack and input-tape.
+;;; A parser state is a pair <Stack,Tape>.
 ;;; Define two actions shift and reduce that works on parser states
 
 
 (defun p-shift (state)
-  "shift the top symbol on tape to stack"
+  "shift the top symbol on tape to stack
+   State -> State
+   "
   (let ((stack (car state))
         (tape (cdr state)))
     (if (null tape)
@@ -312,6 +314,7 @@
               )))))
 
 (defun p-success (state)
+  "State -> [NIL|Sign]"
   (let ((stack (car state))
         (tape (cdr state)))
     (and
