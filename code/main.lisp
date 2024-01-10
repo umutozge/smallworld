@@ -138,7 +138,7 @@
   (format t "Welcome to SmallWorld~%~%A linguists' parser based on CCG~%~%Type :help for help, :quit for quit.~%")
   (format t "~%Initing parser...")
 
-  (load "uni-cg.lisp")
+  (load "ccg.lisp")
   (init-parser)
 
   (*state* 'vocab (funcall (*state* :lexicon) :keys))
