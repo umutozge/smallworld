@@ -111,7 +111,7 @@
 
 (defun read-lexicon (&key (path (*state* :debug-lexicon-path)))
   "Reads lexical entries from path, parses them into signs, and stores them in a aux:multi-set-table (see aux.lisp).
-   the global var (*state* :lexicon) ends up pointing to a closure where one can add, get or 
+   the global var (*state* :lexicon) ends up pointing to a closure where one can add, get or
    query lexical entries using the top level phon feature.
    The closure (*state* :lexicon) is a mapping from phon to the list of signs associated with that phon"
   (format t "~%Reading lexicon...")
@@ -165,32 +165,31 @@
                  (symbol-name direction))))
 
 (defun combine (left right)
-  "return the combination of signs, or nil if not combinable"
+  "return the combination of signs, or nil if not combinable
+   Sign -> Sign
+   "
   (let ((lsyn (sign-syn left)) (rsyn (sign-syn right)))
     (let ((result
-             (or
-               (c-apply lsyn rsyn)
-               (c-compose lsyn rsyn))))
+            (or
+              (c-apply lsyn rsyn)
+              (c-compose lsyn rsyn))))
       (if result
           (let ((syn (first result))
                 (direction (second result))
                 (combinator (third result)))
-           (make-combination
-             :left-input left
-             :right-input right
-             :output (make-sign
-                       :phon (cons (get-deco direction combinator) (cons (sign-phon left) (list (sign-phon right))))
-                       :syn syn
-                       :sem (s-combine left right direction combinator))
-             :direction direction
-             :combinator combinator
-            ))))))
+            (make-sign
+              :phon (cons (get-deco direction combinator)
+                          (cons (sign-phon left)
+                                (list (sign-phon right))))
+              :syn syn
+              :sem (s-combine left right direction combinator)))))))
 
 
 ;;; Application
 
 (defun c-apply (lsyn rsyn)
-  "combine the cats with application, if possible"
+  "combine sign-syn's  with application, if possible
+   return (sign-syn direction combinator) or NIL"
   (or
     (and (eq 'forward (get-dir lsyn))
          (let ((result (_apply lsyn rsyn)))
@@ -206,14 +205,14 @@
 	(if yes
 	  (sublis bindings (get-output func)))))
 
-
 ;;; Composition
 
-(defun c-compose (lsyn rsyn)
-  "combine the cats with composition, if possible"
+(defun c-compose (lsyn rsyn) ; TODO generalized composition
+  "combine sign-syn's  with composition, if possible
+   return (sign-syn direction combinator) or NIL"
   (or
     (and (eql 'forward (get-dir lsyn))
-         (eql 'dot (get-mode lsyn))
+         (eql 'dot (get-mode lsyn)) ; TODO implement modal hierarchy
          (let ((result (_compose lsyn rsyn)))
            (if result
                (list result '> 'b))))
@@ -284,7 +283,7 @@
 ;;; stack of stacks.
 
 
-;;; A parser state is a pair <Stack,Tape>.
+;;; A parser state is a pair <Stack,Tape,History>.
 ;;; Define two actions shift and reduce that works on parser states
 
 
@@ -292,24 +291,25 @@
   "shift the top symbol on tape to stack
    State -> State
    "
-  (let ((stack (car state))
-        (tape (cdr state)))
+  (destructuring-bind
+    (stack . tape)
+    state
     (if (null tape)
         (error "Shift attempt for empty tape")
         (cons
           (cons (car tape) stack)
           (cdr tape)))))
 
-(defun p-reduce (state)
+(defun p-reduce (state reducer)
   "attempt to combine top two items in stack; raise error if stack is too short; return nil for combination failure"
   (let ((stack (car state))
         (tape (cdr state)))
     (if (< (length stack) 2)
         (error "Reduce attempt on a short stack")
-        (let ((reduct (combine (cadr stack) (car stack))))
+        (let ((reduct (funcall reducer (cadr stack) (car stack))))
           (if reduct
               (cons
-                (cons (combination-output reduct) (cddr stack))
+                (cons reduct (cddr stack))
                 tape)
               )))))
 
@@ -330,37 +330,45 @@
   (> (length (car state)) 1))
 
 
-
-;;; a shift-reduce parser is a queue of parser states (agenda)
-;;; car of the agenda is the current state
-
-
-(defun sr-parse (agenda &optional store)
+(defun sr-parse (agenda reducer &optional store)
+  "a shift-reduce parser is a queue of parser states (agenda)
+   car of the agenda is the current state
+ "
   (if (endp agenda)
       store
       (let* ((state (car agenda)))
         (cond ((p-success state)
                (sr-parse (cdr agenda)
+                         reducer
                          (cons (caar state) store)))
               ((p-empty-tapep state) ;tape is over
                (if (p-reducible-statep state) ; is stack still reducible
                    (sr-parse                  ; yes, then reduce it
-                     (cons (p-reduce state) (cdr agenda))
+                     (cons (p-reduce state reducer) (cdr agenda))
+                     reducer
                      store)
-                   (sr-parse (cdr agenda) store))) ; no, discard the current state and go on
+                   (sr-parse
+                     (cdr agenda)
+                     reducer
+                     store))) ; no, discard the current state and go on
               ((not (p-reducible-statep state))    ; compulsory shift
-               (sr-parse (cons (p-shift state) (cdr agenda)) store))
+               (sr-parse
+                 (cons (p-shift state) (cdr agenda))
+                 reducer
+                 store))
               (t
-               (let ((reduct (p-reduce state))
+               (let ((reduct (p-reduce state reducer))
                      (shifted (p-shift state)))
                  (if reduct
                      (sr-parse (cons
                                  reduct
                                  (cons shifted (cdr agenda)))
+                               reducer
                                store)
                      (sr-parse (cons
                                  shifted
                                  (cdr agenda))
+                               reducer
                                store))))))))
 
 (defun parse (sentence)
@@ -370,7 +378,7 @@
         x)
     (mapcan
       #'(lambda (x)
-          (sr-parse (list (cons nil x))))
+          (sr-parse (list (cons nil x)) #'combine))
       (generate-enums sentence))))
 
 ;;; An equality predicate for semantic interpretations
