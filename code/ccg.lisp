@@ -295,6 +295,9 @@
 
 ;;; An equality predicate for semantic interpretations
 
+(defun sign-sem-equalp (s1 s2)
+  "two signs are semantically equivalent, if their sems are alpha-equivalent"
+  (alpha-equivalent (sign-sem s1) (sign-sem s2)))
 
 (defun uniq-parses (set-of-parses)
   "eliminates semantically spurious parses -- see aux.lisp for aux:uniq"
