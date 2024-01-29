@@ -1,4 +1,10 @@
-;;;  lalr.lisp
+
+;;; SmallWorld Syntactic Category Parser based on
+;;; Mark Johnson's LALR parser
+
+
+
+;;;  cat-parser.lisp
 ;;;
 ;;;  This is an LALR parser generator.
 ;;;  (c) 1988 Mark Johnson. mj@cs.brown.edu
@@ -15,11 +21,11 @@
 
 (declaim #+sbcl(sb-ext:muffle-conditions style-warning))
 
-(defpackage "LALR"
+(defpackage "CAT-PARSER"
   (:use "COMMON-LISP")
-  (:export "MAKE-PARSER" "LALR-PARSER" "*LALR-DEBUG*"))
+  (:export  "MAKE-PARSER" "LALR-PARSER"))
 
-(in-package lalr)
+(in-package cat-parser)
 
 ;;; (shadow '(first rest))
 ;;; (defmacro first (x) `(car ,x))
@@ -463,47 +469,5 @@
                 ,@(mapcar #'translateState stateList))
          (,(state-name (first stateList)))))))
                 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;;                   Test grammar and lexical analyser
-;;;
 
-;;;  A Test grammar
-
-(defparameter grammar '((s --> np vp      #'(lambda (np vp) (list 's np vp)))
-                        (np --> det n     #'(lambda (det n) (list 'np det n)))
-                        (np -->           #'(lambda () '(np)))
-                        (vp --> v np      #'(lambda (v np) (list 'vp v np)))
-                        (vp --> v s       #'(lambda (v s) (list 'vp v s)))))
-
-(defparameter lexforms '(det n v))
-
-;;; (make-parser grammar lexforms '$) will generate the parser.
-;;; After compiling that code, (parse <list-of-words>) invokes the parser.  E.g.
-;;;
-;;; ? (parse '(the man thinks the woman hates the dog $))
-;;; (S (NP (DET THE) (N MAN)) (VP (V THINKS) (S (NP (DET THE) (N WOMAN)) (VP (V HATES) (NP (DET THE) (N DOG))))))
-
-(defparameter lexicon '((the det)
-                        (man n)
-                        (woman n)
-                        (cat n)
-                        (dog n)
-                        (loves v)
-                        (thinks v)
-                        (hates v)
-                        ($ $)))
-
-(defun parse (words)
-  (labels ((lookup (word)
-                   (cadr (assoc word lexicon)))
-           (next-input ()
-                       (let* ((word (pop words))
-                              (cat (lookup word)))
-                         (cons cat                  ; category
-                               (list cat word))))   ; value
-           (parse-error ()
-                        (format nil "Error before ~a" words)))
-    (lalr-parser #'next-input #'parse-error)))
-                           
 ;;; *EOF*

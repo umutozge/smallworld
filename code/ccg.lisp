@@ -13,7 +13,7 @@
 ;;; Atomic values and feature names are not distinguished, they are all symbols.
 ;;;
 
-;(declaim #+sbcl(sb-ext:muffle-conditions style-warning))
+(declaim #+sbcl(sb-ext:muffle-conditions style-warning))
 
 (load "lc-q.lisp")
 (load "aux.lisp")
