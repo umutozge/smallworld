@@ -1,10 +1,9 @@
 
-;;; SmallWorld Syntactic Category Parser based on
+;;; SmallWorld Semantic Interpretation Parser based on
 ;;; Mark Johnson's LALR parser
 
 
-
-;;;  cat-parser.lisp
+;;;  sem-parser.lisp
 ;;;
 ;;;  This is an LALR parser generator.
 ;;;  (c) 1988 Mark Johnson. mj@cs.brown.edu
@@ -21,11 +20,11 @@
 
 (declaim #+sbcl(sb-ext:muffle-conditions style-warning))
 
-(defpackage "CAT-PARSER"
+(defpackage "SEM-PARSER"
   (:use "COMMON-LISP")
   (:export  "MAKE-PARSER" "LALR-PARSER"))
 
-(in-package cat-parser)
+(in-package sem-parser)
 
 ;;; (shadow '(first rest))
 ;;; (defmacro first (x) `(car ,x))
@@ -410,7 +409,7 @@
                                   (,(shift-where shift))))
                 (translateReduce (item)
                                  (when (intersection (item-la item) symbolsSoFar)
-                                   (format t "Warning, Not LALR(1)!!: ~a, ~a --> ~{~a ~}~%"
+                                   (format nil "Warning, Not LALR(1)!!: ~a, ~a --> ~{~a ~}~%" ;TODO
                                            (state-name state) 
                                            (rule-mother (item-rule item))
                                            (rule-daughters (item-rule item)))

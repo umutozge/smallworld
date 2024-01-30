@@ -367,7 +367,7 @@
               (tokens (caddr x)))
           (list
             (syn-parse (syn-tokenizer syn))
-            (progn  (print (sem-parse (print (sem-tokenizer sem)))))
+            (sem-parse (sem-tokenizer sem))
             (aux:string-to-list tokens))))
     (mapcar
       #'split-entry
