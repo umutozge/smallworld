@@ -4,7 +4,7 @@
            :print-text))
 
 (defparameter pprinter::*logical-constants*
-  '(cond and or neg))
+  '(cond and or))
 
 (defparameter pprinter::*operators*
   '(lam forall exists))
@@ -26,6 +26,7 @@
          (concatenate 'string
                       "x_"
                       (string (aux:symbol-char form (- (aux:symbol-length form) 1)))))
+        ((string= (symbol-name form) "NEG") (print (symbol-name form)))
         (t (concatenate 'string
                         (symbol-name form)
                         "'"))))

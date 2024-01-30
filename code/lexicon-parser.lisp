@@ -7,6 +7,7 @@
 ;;;
 ;;; s\np : (lam x ($ x)) < cat dog
 
+(declaim #+sbcl(sb-ext:muffle-conditions style-warning))
 
 (defpackage :lexicon-parser
   (:import-from :common-lisp-user #:*state* #:lam #:forall #:exists)
@@ -15,7 +16,8 @@
   (:export :parse-lexicon))
 
 (load "aux.lisp")
-(load "cat-parser.lisp")
+(load "syn-parser.lisp")
+(load "sem-parser.lisp")
 
 (in-package lexicon-parser)
 
@@ -25,7 +27,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;;;    Sem Parsing   ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;
-
 
 
 (defun sem-parse (sem)
@@ -56,6 +57,127 @@
     (let ((newsem (aux:translate-string-char sem '((#\\ . #\!) (#\' . #\Space)))))
       (parse (aux:string-to-list newsem)))))
 
+(defun sem-translator (token)
+  (case (cadr token)
+    (an 'common-lisp-user::and)
+    (or 'common-lisp-user::or)
+    (cn 'common-lisp-user::cond)
+    (ex 'common-lisp-user::exists)
+    (un 'common-lisp-user::forall)
+    (lm 'common-lisp-user::lam)
+    (ng 'common-lisp-user::neg)
+    )
+  )
+
+
+(defparameter sem-lexicon '((ob ob)
+                            (cb cb)
+                            (op op)
+                            (cp cp)
+                            (eq eq)
+                            (dt dt)
+                            (lm opr)
+                            (ex opr)
+                            (un opr)
+                            (an bcon)
+                            (or bcon)
+                            (cn bcon)
+                            (ng ucon)
+                            (pr prime)
+                            ($ $)
+                            ))
+
+(defun sem-tokenizer (sem)
+  "tokenize the semantics given as string"
+  (let ((store nil)
+        (word-buffer (make-string 100))
+        (pos 0))
+    (do ((index 0 (+ index 1)))
+        ((= index (length sem))
+         (remove-if #'null
+                    (reverse
+                      (if (zerop pos)
+                          store
+                          (cons
+                            (let* ((word (string-upcase (subseq word-buffer 0 pos)))
+                                   (symb (intern word)))
+                                  (push (list symb (if (= (length word) 1) 'var 'name)) sem-lexicon)
+                                  symb)
+                            store)))))
+        (let ((current-char (char sem index)))
+          (if (or (and (alpha-char-p current-char) (lower-case-p current-char)) (digit-char-p current-char))
+              (progn
+                (setf (aref word-buffer pos) current-char)
+                (incf pos))
+              (progn
+                (if (not (zerop pos))
+                    (let* ((word (string-upcase (subseq word-buffer 0 pos)))
+                           (int? (parse-integer word :junk-allowed t)))
+                      (push
+                        (or int?
+                            (let ((symb (intern word)))
+                                  (push (list symb (if (= (length word) 1) 'var 'name)) sem-lexicon)
+                              symb))
+                        store)
+                      (setf pos 0)))
+                (push
+                  (case current-char
+                    (#\( 'OP)
+                    (#\) 'CP)
+                    (#\[ 'OB)
+                    (#\] 'CB)
+                    (#\\ 'LM)
+                    (#\V 'OR)
+                    (#\& 'AN)
+                    (#\> 'CN)
+                    (#\~ 'NG)
+                    (#\. 'DT)
+                    (#\= 'EQ)
+                    (#\E 'EX)
+                    (#\A 'UN)
+                    (#\' 'PR)
+                    )
+                  store)))))))
+
+
+
+(defparameter sem-grammar
+        '((for --> pred                 #'(lambda (pr) pr))
+          (for --> binder dt for        #'(lambda (b d f) (append b (list f))))
+          (for --> binder for           #'(lambda (b f) (append b (list f))))
+          (for --> op for cp            #'(lambda (op for cp) for))
+          (binder --> opr var           #'(lambda (o v) (list (sem-translator o) (cadr v))))
+          (for -->  for bcon for        #'(lambda (f1 con f2) (list (list (sem-translator con) f1) f2)))
+          (for -->  ucon for            #'(lambda (ucon f) (list (sem-translator ucon) f)))
+          (for -->  op for bcon for cp  #'(lambda (op f1 con f2 cp) (list (list (sem-translator con) f1) f2)))
+          (pred --> pred _pred          #'(lambda (pr tr) (list pr tr)))
+          (pred --> _pred               #'(lambda (tr) tr))
+          (_pred --> term               #'(lambda (tr) tr))
+          (_pred --> for                #'(lambda (for) for))
+          (_pred --> op pred _pred cp   #'(lambda (op pr tr cp) (list pr tr)))
+          (term --> const               #'(lambda (cn) (cadr cn)))
+          (term --> var                 #'(lambda (vr) (cadr vr)))
+          (const --> name prime         #'(lambda (nm p) nm))
+          )
+        )
+
+(defparameter sem-lexforms
+  '(ob cb op cp eq dt opr bcon ucon prime name var))
+
+(eval (sem-parser:make-parser sem-grammar sem-lexforms '$))
+
+(defun sem-parse (words)
+  (let ((new-words (append words (list '$))))
+    (labels ((lookup (word)
+               (cadr (assoc word sem-lexicon)))
+             (next-input ()
+               (let* ((word (pop new-words))
+                      (cat (lookup word)))
+                 (cons cat                  ; category
+                       (list cat word))))   ; value
+             (parse-error ()
+               (format nil "Error before ~a" new-words)))
+      (sem-parser:lalr-parser #'next-input #'parse-error))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -114,23 +236,25 @@
                             ($ $)
                             ))
 
-(eval
-  (let ((syn-grammar
-          '((cat --> acat fstr 		  #'(lambda (acat fs) (expand-base-category (cons (cadr acat) fs))))
-            (cat --> op cat cp 		  #'(lambda (op cat cp) cat))
-            (cat --> cat slash cat	  #'(lambda (cat1 slash cat2) (list (list 'in cat2) (list 'slash (list (list 'dir (expand-slash slash)) (list 'mode 'dot))) (list 'out cat1))))
-            (cat --> cat slash sm cat	  #'(lambda (cat1 slash mode cat2) (list (list 'in cat2) (list 'slash (list (list 'dir (expand-slash slash)) (list 'mode (expand-mode mode)))) (list 'out cat1))))
-            (fstr --> ob feat f cb        #'(lambda (ob feat f cb) (cons feat f)))
-            (fstr -->         		  #'(lambda () nil))
-            (f -->          		  #'(lambda () nil))
-            (f --> feat f       	  #'(lambda (feat f) (cons feat f)))
-            (feat --> fname eq feat       #'(lambda (fname eq feat) (list (cadr fname) (cadr feat))))
-            (feat --> fval      	  #'(lambda (fval) (list 'fabv (cadr fval))))) 
-          )
-        (lexforms
-          '(acat ob cb op cp slash sm eq fname fval))
+
+(defparameter syn-grammar
+        '((cat --> acat fstr 		  #'(lambda (acat fs) (expand-base-category (cons (cadr acat) fs))))
+          (cat --> op cat cp 		  #'(lambda (op cat cp) cat))
+          (cat --> cat slash cat	  #'(lambda (cat1 slash cat2) (list (list 'in cat2) (list 'slash (list (list 'dir (expand-slash slash)) (list 'mode 'dot))) (list 'out cat1))))
+          (cat --> cat slash sm cat	  #'(lambda (cat1 slash mode cat2) (list (list 'in cat2) (list 'slash (list (list 'dir (expand-slash slash)) (list 'mode (expand-mode mode)))) (list 'out cat1))))
+          (fstr --> ob feat f cb        #'(lambda (ob feat f cb) (cons feat f)))
+          (fstr -->         		  #'(lambda () nil))
+          (f -->          		  #'(lambda () nil))
+          (f --> feat f       	  #'(lambda (feat f) (cons feat f)))
+          (feat --> fname eq feat       #'(lambda (fname eq feat) (list (cadr fname) (cadr feat))))
+          (feat --> fval      	  #'(lambda (fval) (list 'fabv (cadr fval))))) 
         )
-    (cat-parser:make-parser syn-grammar lexforms '$)))
+
+(defparameter syn-lexforms
+  '(acat ob cb op cp slash sm eq fname fval))
+
+
+(eval (syn-parser:make-parser syn-grammar syn-lexforms '$))
 
 (defun syn-parse (words)
   (let ((new-words (append words (list '$))))
@@ -143,7 +267,7 @@
                        (list cat word))))   ; value
              (parse-error ()
                (format nil "Error before ~a" new-words)))
-      (cat-parser:lalr-parser #'next-input #'parse-error))))
+      (syn-parser:lalr-parser #'next-input #'parse-error))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;  Category expansion    ;;;
@@ -197,8 +321,8 @@
                    (cdr features)))))
     (let ((cat-features (cdr (assoc (car cat) (*state* :category-bundle-symbols))))
           (add-features (cdr cat)))
-      (expand-cat (copy-list (*state* :base-cat-template)) (append cat-features 
-                                                                   (mapcar 
+      (expand-cat (copy-list (*state* :base-cat-template)) (append cat-features
+                                                                   (mapcar
                                                                      #'expand-feature
                                                                      add-features))))))
 
@@ -243,7 +367,7 @@
               (tokens (caddr x)))
           (list
             (syn-parse (syn-tokenizer syn))
-            (sem-parse sem)
+            (progn  (print (sem-parse (print (sem-tokenizer sem)))))
             (aux:string-to-list tokens))))
     (mapcar
       #'split-entry
@@ -253,7 +377,7 @@
   (labels ((build-entry (phon syn sem)
              `((phon ,phon)
                (syn ,syn)
-               (sem ,(sublis (list (cons 'common-lisp-user::$ phon)) sem)))))
+               (sem ,(sublis (list (cons 'common-lisp-user::lex phon)) sem)))))
     (with-open-file (str (*state* :debug-lexicon-path) :direction :output)
       (dolist (entry entries)
         (let ((syn (car entry))
