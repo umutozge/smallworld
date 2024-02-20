@@ -19,7 +19,7 @@ For the cloning option you need to have [`git`](https://github.com/git-guides/in
 To clone the `SmallWorld` repo, go to your choice of installation  directory and do:
 
 ```bash
-git clone git@github.com:metu-lfcs/smallworld.git
+git clone git@github.com:umutozge/smallworld.git
 ```
 
 This command will create a directory named `smallworld`. Change to the program directory by,
@@ -44,7 +44,7 @@ You can run `SmallWorld` on the basic exmaple project by,
 sbcl --script main.lisp prj/basic
 ```
 
-The second option to obtain `SmallWorld` is to go to the [repo site](https://github.com/metu-lfcs/smallworld) and download the repo as a zip file to your computer (go to `Clone or download` and click `Download ZIP`). The rest is the same as above -- unzip the archive, change to `code`, and so on.
+The second option to obtain `SmallWorld` is to go to the [repo site](https://github.com/umutozge/smallworld) and download the repo as a zip file to your computer (go to `Clone or download` and click `Download ZIP`). The rest is the same as above -- unzip the archive, change to `code`, and so on.
 
 ###### How to update
 
@@ -60,7 +60,7 @@ In the zip option, you need to download the repo again. While unzipping the new 
 #### Guide
 
 
-##### Projects 
+##### Projects
 
 Projects are found under the folder `prj`. A project consists of `theory.lisp` and `lexicon.lisp` files. The `lexicon.lisp` file is where you enter your lexicon; inspecting the file `prj/basic/lexicon.lisp` should be enough to understand its syntax. Understanding the function of `theory.lisp` requires having grasped some other concepts.
 
