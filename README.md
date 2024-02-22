@@ -2,6 +2,7 @@
 
 A linguists' parser based on Combinatory Categorial Grammar
 
+
 #### Features:
 
 * Linguistically transparent derivations with shift-reduce parsing
@@ -10,11 +11,19 @@ A linguists' parser based on Combinatory Categorial Grammar
 * Terminal pretty-printing and TeX support
 
 
+
+#### Requirements:
+
+- [`git`](https://github.com/git-guides/install-git)
+- [`rlwrap`](https://github.com/hanslub42/rlwrap)
+- [`SBCL`](https://www.sbcl.org/getting.html)
+
+
+<detail>
+<summary>
+
 #### Installation
-
-
-There are two ways to obtain `SmallWorld`: One is cloning it via `git`, the other is to download it as `zip`.
-For the cloning option you need to have [`git`](https://github.com/git-guides/install-git) installed.
+</summary>
 
 To clone the `SmallWorld` repo, go to your choice of installation  directory and do:
 
@@ -34,31 +43,27 @@ and do,
 chmod u+x main.lisp
 ```
 
-
-You need [`SBCL`](https://www.sbcl.org/getting.html) to run `SmallWorld`.
-
-
 You can run `SmallWorld` on the basic exmaple project by,
 
 ```bash
-sbcl --script main.lisp prj/basic
+rlwrap sbcl --script main.lisp prj/basic
 ```
 
-The second option to obtain `SmallWorld` is to go to the [repo site](https://github.com/umutozge/smallworld) and download the repo as a zip file to your computer (go to `Clone or download` and click `Download ZIP`). The rest is the same as above -- unzip the archive, change to `code`, and so on.
-
-###### How to update
-
-Cloning and downloading methods differ in their update procedures. If you've cloned the repo, simply do,
+To update, do,
 
 ```bash
 git pull origin master
 ```
 when in somewhere in the `smallworld` folder. Your local project files will NOT be overwritten or get lost.
 
-In the zip option, you need to download the repo again. While unzipping the new version of the repo, if you are doing this in the same place as the old one, files with the same names will be ovewritten, be careful about this.
+</detail>
+
+
+<detail>
+<summary>
 
 #### Guide
-
+</summary>
 
 ##### Projects
 
@@ -152,4 +157,4 @@ The internal representation of a lexical category is an AVM with three main feat
 `SYN` is a complex feature which has another AVM as its value. For functional categories like `SLEEPS` above, the value of the `SYN` feature is an AVM with three features: `IN` for the input category, `DIR` for the slash, and `OUT` for the output category.
 
 Studying the example `lexicon.lisp`, `theory.lisp` and the `_lexicon.lisp` generated on the basis of the former two will clarify how the system works.
-
+</detail>
