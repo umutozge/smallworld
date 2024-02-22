@@ -3,7 +3,7 @@
 A linguists' parser based on Combinatory Categorial Grammar
 
 
-#### Features:
+#### Features
 
 * Linguistically transparent derivations with shift-reduce parsing
 * Rich feature structures for commensurability with Minimalism
@@ -12,18 +12,20 @@ A linguists' parser based on Combinatory Categorial Grammar
 
 
 
-#### Requirements:
+<details>
+<summary>
+
+#### Installation
+</summary>
+
+First install the following to your system.
 
 - [`git`](https://github.com/git-guides/install-git)
 - [`rlwrap`](https://github.com/hanslub42/rlwrap)
 - [`SBCL`](https://www.sbcl.org/getting.html)
 
 
-<detail>
-<summary>
 
-#### Installation
-</summary>
 
 To clone the `SmallWorld` repo, go to your choice of installation  directory and do:
 
@@ -56,10 +58,10 @@ git pull origin master
 ```
 when in somewhere in the `smallworld` folder. Your local project files will NOT be overwritten or get lost.
 
-</detail>
+</details>
 
 
-<detail>
+<details>
 <summary>
 
 #### Guide
@@ -157,4 +159,4 @@ The internal representation of a lexical category is an AVM with three main feat
 `SYN` is a complex feature which has another AVM as its value. For functional categories like `SLEEPS` above, the value of the `SYN` feature is an AVM with three features: `IN` for the input category, `DIR` for the slash, and `OUT` for the output category.
 
 Studying the example `lexicon.lisp`, `theory.lisp` and the `_lexicon.lisp` generated on the basis of the former two will clarify how the system works.
-</detail>
+</details>
