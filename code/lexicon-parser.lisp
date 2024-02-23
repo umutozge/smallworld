@@ -15,9 +15,6 @@
   (:nicknames :lp)
   (:export :parse-lexicon))
 
-(load "aux.lisp")
-(load "syn-parser.lisp")
-(load "sem-parser.lisp")
 
 (in-package lexicon-parser)
 

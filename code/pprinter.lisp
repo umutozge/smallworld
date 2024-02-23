@@ -9,9 +9,6 @@
 (defparameter pprinter::*operators*
   '(lam forall exists))
 
-;; TODO
-(load "/Users/umut/res/github/smallworld/code/aux.lisp")
-
 (in-package pprinter)
 
 (defun logical-constant-p (form)

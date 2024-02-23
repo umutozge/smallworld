@@ -18,45 +18,80 @@ A linguists' parser based on Combinatory Categorial Grammar
 #### Installation
 </summary>
 
+
+
+##### Prerequisites
+
 First install the following to your system.
 
 - [`git`](https://github.com/git-guides/install-git)
-- [`rlwrap`](https://github.com/hanslub42/rlwrap)
 - [`SBCL`](https://www.sbcl.org/getting.html)
+- [`rlwrap`](https://github.com/hanslub42/rlwrap) (optional)
 
 
+Type,
+
+```bash
+sbcl --version
+```
+
+on the command-line and see if you have a working `SBCL`.
 
 
-To clone the `SmallWorld` repo, go to your choice of installation  directory and do:
+Install [`quicklisp`](https://www.quicklisp.org/beta/) as described in the link, make sure to complete all the steps. 
+
+
+##### Fetch the program to your system
+
+
+Clone the `SmallWorld` repo by going to your choice of installation directory and doing:
 
 ```bash
 git clone git@github.com:umutozge/smallworld.git
 ```
 
-This command will create a directory named `smallworld`. Change to the program directory by,
+
+##### Create the `smallworld` executable
+
+The `git clone` command above will create a directory named `smallworld`. Change to the program directory by,
 
 ```bash
-cd smallworld/code/
+cd smallworld/
 ```
 
 and do,
 
 ```bash
-chmod u+x main.lisp
+sbcl --script install.lisp
 ```
 
-You can run `SmallWorld` on the basic exmaple project by,
+This operation, if successful, will create an executable file `smallworld` in your local bin directory. If you don't have one, the installer will create it. Note this directory, because you need to [add](https://medium.com/@jamexkarix583/add-bin-folder-to-the-path-772de253f579) it to your `PATH`. 
+
+
+##### Run the program
+
+Now, you can run `smallworld` from anywhere on your system. You need to specify the project directory as a command line argument:
+
 
 ```bash
-rlwrap sbcl --script main.lisp prj/basic
+smallworld <project-directory>
 ```
 
-To update, do,
+If you installed `rlwrap` -- which is highly recommended -- you can run the command as:
+
+```bash
+rlwrap smallworld <project-directory>
+```
+
+##### How to update
+
+
+To update `SmallWorld`, do,
 
 ```bash
 git pull origin master
 ```
-when in somewhere in the `smallworld` folder. Your local project files will NOT be overwritten or get lost.
+when in somewhere in the `smallworld` folder. Your local project files will NOT be overwritten or get lost. Re-run the install script.
 
 </details>
 

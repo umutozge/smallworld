@@ -15,11 +15,6 @@
 
 (declaim #+sbcl(sb-ext:muffle-conditions style-warning))
 
-(load "lc-q.lisp")
-(load "aux.lisp")
-(load "sr-parser.lisp")
-(load "lexicon-parser.lisp")
-(load "unifier.lisp")
 
 ; (defpackage :uni-cg
 ;   (:use :common-lisp)
