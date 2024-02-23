@@ -15,12 +15,12 @@ A linguists' parser based on Combinatory Categorial Grammar
 <details>
 <summary>
 
-#### Installation
+### Installation
 </summary>
 
 
 
-##### Prerequisites
+#### Prerequisites
 
 First install the following to your system.
 
@@ -29,19 +29,20 @@ First install the following to your system.
 - [`rlwrap`](https://github.com/hanslub42/rlwrap) (optional)
 
 
+
 Type,
 
 ```bash
 sbcl --version
 ```
 
-on the command-line and see if you have a working `SBCL`.
+on the command-line to see if you have a working `SBCL`.
 
 
-Install [`quicklisp`](https://www.quicklisp.org/beta/) as described in the link, make sure to complete all the steps. 
+Install `quicklisp` as described [here](https://www.quicklisp.org/beta/), make sure to complete all the steps.
 
 
-##### Fetch the program to your system
+#### Fetch the program to your system
 
 
 Clone the `SmallWorld` repo by going to your choice of installation directory and doing:
@@ -51,7 +52,7 @@ git clone git@github.com:umutozge/smallworld.git
 ```
 
 
-##### Create the `smallworld` executable
+#### Create the `smallworld` executable
 
 The `git clone` command above will create a directory named `smallworld`. Change to the program directory by,
 
@@ -65,10 +66,10 @@ and do,
 sbcl --script install.lisp
 ```
 
-This operation, if successful, will create an executable file `smallworld` in your local bin directory. If you don't have one, the installer will create it. Note this directory, because you need to [add](https://medium.com/@jamexkarix583/add-bin-folder-to-the-path-772de253f579) it to your `PATH`. 
+This operation, if successful, will create an executable file `smallworld` in your local bin directory. If you don't have one, the installer will create it. Note this directory, because you need to [add](https://medium.com/@jamexkarix583/add-bin-folder-to-the-path-772de253f579) it to your `PATH`.
 
 
-##### Run the program
+#### Run the program
 
 Now, you can run `smallworld` from anywhere on your system. You need to specify the project directory as a command line argument:
 
@@ -83,7 +84,7 @@ If you installed `rlwrap` -- which is highly recommended -- you can run the comm
 rlwrap smallworld <project-directory>
 ```
 
-##### How to update
+#### How to update
 
 
 To update `SmallWorld`, do,
@@ -91,7 +92,7 @@ To update `SmallWorld`, do,
 ```bash
 git pull origin master
 ```
-when in somewhere in the `smallworld` folder. Your local project files will NOT be overwritten or get lost. Re-run the install script.
+when in somewhere in the `smallworld` folder. Your local project files will NOT be overwritten or get lost. Re-run the install script for changes to take effect.
 
 </details>
 
@@ -106,7 +107,7 @@ when in somewhere in the `smallworld` folder. Your local project files will NOT 
 
 Projects are found under the folder `prj`. A project consists of `theory.lisp` and `lexicon.lisp` files. The `lexicon.lisp` file is where you enter your lexicon; inspecting the file `prj/basic/lexicon.lisp` should be enough to understand its syntax. Understanding the function of `theory.lisp` requires having grasped some other concepts.
 
-###### Attribute-value matrices 
+###### Attribute-value matrices
 
 These are basic, intuitive data records. Here is an example:
 
