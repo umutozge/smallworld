@@ -13,10 +13,7 @@ A linguists' parser based on Combinatory Categorial Grammar
 
 
 <details>
-<summary>
-
-### Installation
-</summary>
+<summary>Installation</summary>
 
 
 
@@ -90,7 +87,7 @@ rlwrap smallworld <project-directory>
 To update `SmallWorld`, do,
 
 ```bash
-git pull origin master
+git pull origin main
 ```
 when in somewhere in the `smallworld` folder. Your local project files will NOT be overwritten or get lost. Re-run the install script for changes to take effect.
 
@@ -98,14 +95,11 @@ when in somewhere in the `smallworld` folder. Your local project files will NOT 
 
 
 <details>
-<summary>
-
-#### Guide
-</summary>
+<summary>Usage</summary>
 
 ##### Projects
 
-Projects are found under the folder `prj`. A project consists of `theory.lisp` and `lexicon.lisp` files. The `lexicon.lisp` file is where you enter your lexicon; inspecting the file `prj/basic/lexicon.lisp` should be enough to understand its syntax. Understanding the function of `theory.lisp` requires having grasped some other concepts.
+A project consists of `theory.lisp` and `lexicon.lisp` files. The `lexicon.lisp` file is where you enter your lexicon; inspecting the file `projects/basic/lexicon.lisp` should be enough to understand its syntax. Understanding the function of `theory.lisp` requires having grasped some other concepts.
 
 ###### Attribute-value matrices
 
