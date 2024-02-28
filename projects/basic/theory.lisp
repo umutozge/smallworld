@@ -1,0 +1,43 @@
+;;;
+;;; Theory definition
+;;;
+
+;;;
+;;; Atomic category template
+;;;
+;;; Example: 
+;;;
+;;; (base-cat-template ((cat n) (agr _) (bar 0)))
+;;;
+
+(base-cat-template ((cat ?_) (agr ?_) (bar ?_)))
+
+;;;
+;;; Provide a feature dictionary (feature val ...)
+;;; 
+;;; WARNING: feature values must be unique to a feature name. WARNING: feature
+;;; names and atomic feature values must be alphanumeric.
+;;;
+;;; Example:
+;;;
+;;; (feature-dictionary (agr pl sg) (bar 0 1 2))
+;;;
+;;; The first element is the feature name and the rest are the possible values
+;;; for this feature.
+;;;
+
+(feature-dictionary (agr pl sg)
+                    (cat v n a p m)   
+                    (bar 0 1 2))
+
+;;;
+;;; Provide the category bundle symbols (ccg category symbols) with their meanings.
+;;; Their meanings are the features they will override in the default base category template (see above). 
+;;;
+
+(category-bundle-symbols (s (cat v) (bar 1))
+			 (np (cat n) (bar 2))
+                         (adj (cat a) (bar 0))
+                         (ap (cat a) (bar 2))
+                         (n (cat n) (bar 0))
+                         (m (cat m) (bar 2)))
