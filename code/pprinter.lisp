@@ -40,13 +40,18 @@
                  (parse (third form))))
 
         ((logical-constant-p (first form))
-         (format nil "~A ~(~A~)"
+         ((format nil "~A ~(~A~)"
                  (parse (second form))
-                 (first form)))
+                 (first form))))
         (t
-         (format nil "~A ~A"
+         (let ((parse-of-rest (parse (second form))))
+           (format nil
+                 (if (find #\Space parse-of-rest :test #'equalp)
+                     "~A (~A)"
+                     "~A ~A"
+                     )
                  (parse (first form))
-                 (parse (second form))))))
+                 parse-of-rest)))))
 
 (defun print-text (form)
   (apply

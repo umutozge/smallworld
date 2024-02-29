@@ -19,7 +19,7 @@
                    (gethash key table)
                    val)))))
 
-(mapc 
+(mapc
   (lambda (name)
     (load (str:concat name ".lisp")))
   '("aux" "unifier"  "lc-q" "pprinter" "sr-parser" "syn-parser" "sem-parser" "lexicon-parser" "ccg"))
