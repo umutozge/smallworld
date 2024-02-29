@@ -23,7 +23,7 @@
          (concatenate 'string
                       "x_"
                       (string (aux:symbol-char form (- (aux:symbol-length form) 1)))))
-        ((string= (symbol-name form) "NEG") (print (symbol-name form)))
+        ((string= (symbol-name form) "NEG") (symbol-name form))
         (t (concatenate 'string
                         (symbol-name form)
                         "'"))))
@@ -40,16 +40,15 @@
                  (parse (third form))))
 
         ((logical-constant-p (first form))
-         ((format nil "~A ~(~A~)"
+         (format nil "~A ~(~A~)"
                  (parse (second form))
-                 (first form))))
+                 (first form)))
         (t
          (let ((parse-of-rest (parse (second form))))
            (format nil
                  (if (find #\Space parse-of-rest :test #'equalp)
                      "~A (~A)"
-                     "~A ~A"
-                     )
+                     "~A ~A")
                  (parse (first form))
                  parse-of-rest)))))
 
