@@ -112,9 +112,8 @@
    the global var (*state* :lexicon) ends up pointing to a closure where one can add, get or
    query lexical entries using the top level phon feature.
    The closure (*state* :lexicon) is a mapping from phon to the list of signs associated with that phon"
-  (format t "~%Reading lexicon...")
   (with-open-file (instr path :direction :input)
-    (format t "Read ~A items.~%"
+    (format t "~%Read ~A items.~%"
             (do ((count 0 (+ 1 count))
                  (item
                    (read instr nil 'eof)

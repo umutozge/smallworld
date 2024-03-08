@@ -26,33 +26,33 @@
 ;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(defun sem-parse (sem)
-  (labels ((lambda-p (expr)
-             (and
-               (consp expr)
-               (= (length expr) 3)
-               (member (car expr) '(lam forall exists))))
-           (r-adjoin (expr adjunct)
-             (if (null adjunct)
-                 expr
-                 (list expr adjunct)))
-           (parse (sem)
-             (cond ((atom sem)
-                    sem)
-                   ((endp sem)
-                    nil)
-                   ((= 1 (length sem))
-                    (parse (car sem)))
-                   ((lambda-p sem)
-                    (list (car sem) (cadr sem) (parse (cddr sem))))
-                   (t
-                    (r-adjoin
-                      (list
-                        (parse (car sem))
-                        (parse (cadr sem)))
-                      (parse (cddr sem)))))))
-    (let ((newsem (aux:translate-string-char sem '((#\\ . #\!) (#\' . #\Space)))))
-      (parse (aux:string-to-list newsem)))))
+; (defun sem-parse (sem)
+;   (labels ((lambda-p (expr)
+;              (and
+;                (consp expr)
+;                (= (length expr) 3)
+;                (member (car expr) '(lam forall exists)))) ;OPERATORS
+;            (r-adjoin (expr adjunct)
+;              (if (null adjunct)
+;                  expr
+;                  (list expr adjunct)))
+;            (parse (sem)
+;              (cond ((atom sem)
+;                     sem)
+;                    ((endp sem)
+;                     nil)
+;                    ((= 1 (length sem))
+;                     (parse (car sem)))
+;                    ((lambda-p sem)
+;                     (list (car sem) (cadr sem) (parse (cddr sem))))
+;                    (t
+;                     (r-adjoin
+;                       (list
+;                         (parse (car sem))
+;                         (parse (cadr sem)))
+;                       (parse (cddr sem)))))))
+;     (let ((newsem (aux:translate-string-char sem '((#\\ . #\!) (#\' . #\Space)))))
+;       (parse (aux:string-to-list newsem)))))
 
 (defun sem-translator (token)
   (case (cadr token)
@@ -364,7 +364,7 @@
               (tokens (caddr x)))
           (list
             (syn-parse (syn-tokenizer syn))
-            (sem-parse (sem-tokenizer sem))
+            (sem-parse (print (sem-tokenizer sem)))
             (aux:string-to-list tokens))))
     (mapcar
       #'split-entry
@@ -384,7 +384,7 @@
             (format str "~A~%~%" (build-entry token syn sem))))))))
 
 (defun parse-lexicon ()
-  (format t "~%Parsing the lexicon found at ~a . . .~%"
+  (format t "~%Reading the lexicon found at ~a . . . "
           (pathname-name (*state* :lexicon-path)))
   "then add items to the syn-lexicon on the basis of *feature-dictionary*"
   (dolist (x (*state* :feature-dictionary))

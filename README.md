@@ -8,6 +8,7 @@ A linguists' parser based on Combinatory Categorial Grammar
 * Linguistically transparent derivations with shift-reduce parsing
 * Rich feature structures for commensurability with Minimalism
 * Separate definitions for feature theory and lexicon
+* `xfst` integration through `flookup` for morphological analysis
 * Terminal pretty-printing and TeX support
 
 

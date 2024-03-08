@@ -1,5 +1,3 @@
-;#!/opt/homebrew/bin/sbcl --script
-
 (declaim (optimize (speed 0) (safety 3) (debug 3)))
 (declaim (sb-ext:muffle-conditions cl:warning))
 
@@ -120,20 +118,19 @@
     #+CMU extensions:*command-line-words*
     nil))
 
-(defun main ()
+(defun main (&key (project-path nil))
   ;; decorate *state*
   (*state* :eta-normalize t)
   (*state* :derivation nil)
   (*state* :uniq-parses nil)
   (*state* :lexicon (aux:multiset-table))
-  (*state* :project-path (cadr (command-line)))
+  (*state* :project-path (or project-path (cadr (command-line))))
   (*state* :prompt (car (last (str:split #\/ (*state* :project-path)))))
   (*state* :debug-lexicon-path (aux:string-to-pathname (*state* :project-path) "/_lexicon.lisp" ))
   (if (probe-file (*state* :debug-lexicon-path))
       (delete-file (*state* :debug-lexicon-path)))
   (*state* :lexicon-path (aux:string-to-pathname (*state* :project-path) "/lexicon.lisp" ))
   (*state* :theory-path (aux:string-to-pathname (*state* :project-path) "/theory.lisp"))
-  (format t "~%nReading the theory found at ~a . . .~%" (pathname-name (*state* :theory-path)))
   (*state* :theory (aux:read-from-file (*state* :theory-path)))
   (*state* :base-cat-template       (cadr (assoc 'base-cat-template (*state* :theory))))
   (*state* :feature-dictionary      (cdr  (assoc 'feature-dictionary (*state* :theory))))
@@ -143,6 +140,7 @@
   (run-program "/usr/bin/clear" nil :output *standard-output*)
   (format t "Welcome to SmallWorld~%~%A linguists' parser based on CCG~%~%Type :help for help, :quit for quit.~%")
   (format t "~%Initing parser...")
+  (format t "~%~%Reading the theory found at ~a . . ." (pathname-name (*state* :theory-path)))
 
   (init-parser)
 
