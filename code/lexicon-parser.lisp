@@ -20,39 +20,24 @@
 
 ;(defparameter *end-marker* '$)
 
+(defmacro lalr-parse (words with parser-package-name)
+  `(let ((new-words (append ,words (list '$))))
+    (labels ((lookup (word)
+               (cadr (assoc word ,(intern (concatenate 'string (subseq (symbol-name parser-package-name) 0 4) "LEXICON")))))
+             (next-input ()
+               (let* ((word (pop new-words))
+                      (cat (lookup word)))
+                 (cons cat                  ; category
+                       (list cat word))))   ; value
+             (parse-error ()
+               (format nil "Error before ~a" new-words)))
+      (,(intern "LALR-PARSER" parser-package-name)
+         #'next-input #'parse-error))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;;;    Sem Parsing   ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;
 
-
-; (defun sem-parse (sem)
-;   (labels ((lambda-p (expr)
-;              (and
-;                (consp expr)
-;                (= (length expr) 3)
-;                (member (car expr) '(lam forall exists)))) ;OPERATORS
-;            (r-adjoin (expr adjunct)
-;              (if (null adjunct)
-;                  expr
-;                  (list expr adjunct)))
-;            (parse (sem)
-;              (cond ((atom sem)
-;                     sem)
-;                    ((endp sem)
-;                     nil)
-;                    ((= 1 (length sem))
-;                     (parse (car sem)))
-;                    ((lambda-p sem)
-;                     (list (car sem) (cadr sem) (parse (cddr sem))))
-;                    (t
-;                     (r-adjoin
-;                       (list
-;                         (parse (car sem))
-;                         (parse (cadr sem)))
-;                       (parse (cddr sem)))))))
-;     (let ((newsem (aux:translate-string-char sem '((#\\ . #\!) (#\' . #\Space)))))
-;       (parse (aux:string-to-list newsem)))))
 
 (defun sem-translator (token)
   (case (cadr token)
@@ -253,18 +238,23 @@
 
 (eval (syn-parser:make-parser syn-grammar syn-lexforms '$))
 
-(defun syn-parse (words)
-  (let ((new-words (append words (list '$))))
-    (labels ((lookup (word)
-               (cadr (assoc word syn-lexicon)))
-             (next-input ()
-               (let* ((word (pop new-words))
-                      (cat (lookup word)))
-                 (cons cat                  ; category
-                       (list cat word))))   ; value
-             (parse-error ()
-               (format nil "Error before ~a" new-words)))
-      (syn-parser:lalr-parser #'next-input #'parse-error))))
+
+; (defun syn-parse (words)
+;   (let ((new-words (append words (list '$))))
+;     (labels ((lookup (word)
+;                (cadr (assoc word syn-lexicon)))
+;              (next-input ()
+;                (let* ((word (pop new-words))
+;                       (cat (lookup word)))
+;                  (cons cat                  ; category
+;                        (list cat word))))   ; value
+;              (parse-error ()
+;                (format nil "Error before ~a" new-words)))
+;       (syn-parser:lalr-parser #'next-input #'parse-error))))
+
+
+
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;  Category expansion    ;;;
@@ -363,8 +353,8 @@
               (sem (cadr x))
               (tokens (caddr x)))
           (list
-            (syn-parse (syn-tokenizer syn))
-            (sem-parse (print (sem-tokenizer sem)))
+            (lalr-parse (syn-tokenizer syn) with :syn-parser)
+            (lalr-parse (sem-tokenizer sem) with :sem-parser)
             (aux:string-to-list tokens))))
     (mapcar
       #'split-entry
