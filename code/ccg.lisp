@@ -15,17 +15,6 @@
 
 (declaim #+sbcl(sb-ext:muffle-conditions style-warning))
 
-
-; (defpackage :uni-cg
-;   (:use :common-lisp)
-;   (:export :parse
-;            :uniq-parses
-;            :init-parser
-;            :sign-sem
-; 		   ))
-
-; (in-package uni-cg)
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;     Signs                    ;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -42,9 +31,9 @@
   sem)
 
 (defun construct-sign (lex)
-  (make-sign :phon (cadr (assoc 'lexicon-reader::phon lex))
-             :syn (unifier:refresh-vars (cadr (assoc 'lexicon-reader::syn lex)))
-             :sem (cadr (assoc 'lexicon-reader::sem lex))))
+  (make-sign :phon (cadr (assoc 'phon lex))
+             :syn (unifier:refresh-vars (cadr (assoc 'syn lex)))
+             :sem (cadr (assoc 'sem lex))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;    (Syntactic) Categories    ;;;;
@@ -85,7 +74,7 @@
 
 (defun get-dir (fs)
   "return the directionality of a functor -- nil if not a functor"
-  (print (search-syn (print fs) 'slash 'dir)))
+  (search-syn fs 'slash 'dir))
 
 (defun get-mode (fs)
   "return the mode a functor -- nil if not a functor"
@@ -280,7 +269,7 @@
    query lexical entries using the top level phon feature.
    The closure (*state* :lexicon) is a mapping from phon to the list of signs associated with that phon"
   (do ((count 0 (+ 1 count))
-       (items (lexicon-reader:read-lexicon) (cdr items)))
+       (items (read-lexicon) (cdr items)))
       ((endp items) count)
       (let ((sign (construct-sign (car items))))
         (apply (*state* :lexicon) (list (sign-phon sign) sign) ))))

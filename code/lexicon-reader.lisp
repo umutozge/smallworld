@@ -2,23 +2,11 @@
 ;;; Module for parsing CCG syn-grammars into lexicons
 ;;;
 
-
+;;;
 ;;; Input format:
 ;;;
 ;;; def <cat-name> {s\np; \x.lex'x; dog cat}:   
-
-(declaim #+sbcl(sb-ext:muffle-conditions style-warning))
-
-(defpackage :lexicon-reader
-  (:import-from :common-lisp-user #:*state* #:lam #:forall #:exists)
-  (:use :common-lisp)
-  (:nicknames :lr)
-  (:export :read-lexicon))
-
-
-(in-package lexicon-reader)
-
-;(defparameter *end-marker* '$)
+;;;
 
 (defmacro lalr-parse (words with parser-package-name)
   `(let ((new-words (append ,words (list '$))))
@@ -38,18 +26,15 @@
 ;;;   Sem Parsing   ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;
 
-
 (defun sem-translator (token)
   (case (cadr token)
-    (an 'common-lisp-user::and)
-    (or 'common-lisp-user::or)
-    (cn 'common-lisp-user::cond)
-    (ex 'common-lisp-user::exists)
-    (un 'common-lisp-user::forall)
-    (lm 'common-lisp-user::lam)
-    (ng 'common-lisp-user::neg)
-    )
-  )
+    (an 'and)
+    (or 'or)
+    (cn 'cond)
+    (ex 'exists)
+    (un 'forall)
+    (lm 'lam)
+    (ng 'neg)))
 
 
 (defparameter sem-lexicon '((ob ob)
@@ -66,8 +51,7 @@
                             (cn bcon)
                             (ng ucon)
                             (pr prime)
-                            ($ $)
-                            ))
+                            ($ $)))
 
 (defun sem-tokenizer (sem)
   "tokenize the semantics given as string"
@@ -148,19 +132,6 @@
 
 (eval (sem-parser:make-parser sem-grammar sem-lexforms '$))
 
-(defun sem-parse (words)
-  (let ((new-words (append words (list '$))))
-    (labels ((lookup (word)
-               (cadr (assoc word sem-lexicon)))
-             (next-input ()
-               (let* ((word (pop new-words))
-                      (cat (lookup word)))
-                 (cons cat                  ; category
-                       (list cat word))))   ; value
-             (parse-error ()
-               (format nil "Error before ~a" new-words)))
-      (sem-parser:lalr-parser #'next-input #'parse-error))))
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;      Syn Parsing       ;;;
@@ -235,7 +206,6 @@
 (defparameter syn-lexforms
   '(acat ob cb op cp slash sm eq fname fval))
 
-
 (eval (syn-parser:make-parser syn-grammar syn-lexforms '$))
 
 
@@ -252,8 +222,7 @@
 
 (defun expand-mode (mode)
   (case (cadr mode)
-    (sm 'star))
-  )
+    (sm 'star)))
 
 (defun expand-base-category (cat)
   (labels ((feature-abrv-p (feat)
