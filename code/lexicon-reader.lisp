@@ -5,18 +5,18 @@
 
 ;;; Input format:
 ;;;
-;;; s\np : (lam x ($ x)) < cat dog
+;;; def <cat-name> {s\np; \x.lex'x; dog cat}:   
 
 (declaim #+sbcl(sb-ext:muffle-conditions style-warning))
 
-(defpackage :lexicon-parser
+(defpackage :lexicon-reader
   (:import-from :common-lisp-user #:*state* #:lam #:forall #:exists)
   (:use :common-lisp)
-  (:nicknames :lp)
-  (:export :parse-lexicon))
+  (:nicknames :lr)
+  (:export :read-lexicon))
 
 
-(in-package lexicon-parser)
+(in-package lexicon-reader)
 
 ;(defparameter *end-marker* '$)
 
@@ -35,7 +35,7 @@
          #'next-input #'parse-error))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;
-;;;    Sem Parsing   ;;;
+;;;   Sem Parsing   ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;
 
 
@@ -239,23 +239,6 @@
 (eval (syn-parser:make-parser syn-grammar syn-lexforms '$))
 
 
-; (defun syn-parse (words)
-;   (let ((new-words (append words (list '$))))
-;     (labels ((lookup (word)
-;                (cadr (assoc word syn-lexicon)))
-;              (next-input ()
-;                (let* ((word (pop new-words))
-;                       (cat (lookup word)))
-;                  (cons cat                  ; category
-;                        (list cat word))))   ; value
-;              (parse-error ()
-;                (format nil "Error before ~a" new-words)))
-;       (syn-parser:lalr-parser #'next-input #'parse-error))))
-
-
-
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;  Category expansion    ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -318,72 +301,53 @@
 ;;;;       Main drive       ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun read-entries ()
-  "read the entries in the lexicon file to a list of strings"
-  (reverse
-    (remove-if
-              #'(lambda (x) (or
-                              (funcall 'aux:empty-string-p x)
-                              (funcall 'aux:starts-with-p x ";")))
-              (with-open-file (str (*state* :lexicon-path) :direction :input)
-                (do ((entry (read-line str nil :eof) (read-line str nil :eof))
-                     (store nil (cons entry store)))
-                    ((eq entry :eof) store))))))
-
-(defun split-entry (entry)
-  (let ((buffer (make-string 1000))
-        (pos 0)
-        (category)
-        (interpretation)
-        (forms))
-    (do ((index 0 (+ 1 index)))
-        ((= index (length entry))
-         (setf forms (string-trim '(#\Space #\Tab ) (subseq buffer 0 pos)))
-         (list category interpretation forms))
-        (let ((current-char (char entry index)))
-          (case current-char
-            (#\: (setf category (string-trim '(#\Space #\Tab) (subseq buffer 0 pos))) (setf pos 0))
-            (#\< (setf interpretation (string-trim '(#\Space #\Tab) (subseq buffer 0 pos))) (setf pos 0))
-            (otherwise (setf (aref buffer pos) current-char) (incf pos)))))))
-
-(defun generate-entry-list ()
-  (mapcar
-    #'(lambda (x)
-        (let ((syn (car x))
-              (sem (cadr x))
-              (tokens (caddr x)))
-          (list
-            (lalr-parse (syn-tokenizer syn) with :syn-parser)
-            (lalr-parse (sem-tokenizer sem) with :sem-parser)
-            (aux:string-to-list tokens))))
-    (mapcar
-      #'split-entry
-      (read-entries))))
-
-(defun proc-entries (entries)
-  (labels ((build-entry (phon syn sem)
+(defun read-lexicon ()
+  (labels ((read-entries (content)
+             (let ((outer-scanner (re:create-scanner "def\\s+[^{]+\\s*{[^}]+}"))
+                   (inner-scanner (re:create-scanner "def\\s+([^{]+)\\s*{[ \\t\\n]*(.+)[ \\t\\n]*;[ \\t\\n]*([^}]+)[ \\t\\n]*;[ \\t\\n]*([^}]*)}")))
+               (mapcar
+                 #'(lambda (entry)
+                     (re:register-groups-bind
+                       (key syn sem forms)
+                       (inner-scanner entry)
+                       (list key syn sem forms)))
+                 (let ((store nil))
+                   (re:do-matches-as-strings
+                     (match outer-scanner content store)
+                     (push match store))))))
+           (build-entry (phon syn sem)
              `((phon ,phon)
                (syn ,syn)
-               (sem ,(sublis (list (cons 'common-lisp-user::lex phon)) sem)))))
-    (with-open-file (str (*state* :debug-lexicon-path) :direction :output)
-      (dolist (entry entries)
-        (let ((syn (car entry))
-              (sem (cadr entry))
-              (tokens (caddr entry)))
-          (dolist (token tokens)
-            (format str "~A~%~%" (build-entry token syn sem))))))))
-
-(defun parse-lexicon ()
-  (format t "~%Reading the lexicon found at ~a . . . "
-          (pathname-name (*state* :lexicon-path)))
-  "then add items to the syn-lexicon on the basis of *feature-dictionary*"
-  (dolist (x (*state* :feature-dictionary))
-    (dolist (y (cdr x))
-      (push (list y 'fval) syn-lexicon))
-    (push (list (car x) 'fname) syn-lexicon))
-  "then add *category-bundle-symbols* as acat items to the syn-lexicon"
-  (dolist (x (*state* :category-bundle-symbols))
-    (push (list (car x) 'acat) syn-lexicon))
-  (proc-entries
-    (generate-entry-list))
-  )
+               (sem ,(sublis (list (cons 'common-lisp-user::lex phon)) sem))))
+           (generate-entry-list ()
+             (mapcar
+               #'(lambda (x)
+                   (let ((syn (second x))
+                         (sem (third x))
+                         (tokens (fourth x)))
+                     (list
+                       (lalr-parse (syn-tokenizer syn) with :syn-parser)
+                       (lalr-parse (sem-tokenizer sem) with :sem-parser)
+                       (aux:string-to-list tokens))))
+               (read-entries (aux:read-file-as-string (*state* :lexicon-path))))))
+    (format t "~%Reading the lexicon found at ~a . . . "
+            (pathname-name (*state* :lexicon-path)))
+    "then add items to the syn-lexicon on the basis of *feature-dictionary*"
+    (dolist (x (*state* :feature-dictionary))
+      (dolist (y (cdr x))
+        (push (list y 'fval) syn-lexicon))
+      (push (list (car x) 'fname) syn-lexicon))
+    "then add *category-bundle-symbols* as acat items to the syn-lexicon"
+    (dolist (x (*state* :category-bundle-symbols))
+      (push (list (car x) 'acat) syn-lexicon))
+    (let ((store nil))
+      (with-open-file (debug-stream (*state* :debug-lexicon-path) :direction :output)
+        (dolist (entry (generate-entry-list))
+          (let ((syn (car entry))
+                (sem (cadr entry))
+                (tokens (caddr entry)))
+            (dolist (token tokens)
+              (let ((item (build-entry token syn sem)))
+                (format debug-stream "~A~%~%" item)
+                (push item store))))))
+      store)))

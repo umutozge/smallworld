@@ -41,6 +41,11 @@
   syn
   sem)
 
+(defun construct-sign (lex)
+  (make-sign :phon (cadr (assoc 'lexicon-reader::phon lex))
+             :syn (unifier:refresh-vars (cadr (assoc 'lexicon-reader::syn lex)))
+             :sem (cadr (assoc 'lexicon-reader::sem lex))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;    (Syntactic) Categories    ;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -80,7 +85,7 @@
 
 (defun get-dir (fs)
   "return the directionality of a functor -- nil if not a functor"
-  (search-syn fs 'slash 'dir))
+  (print (search-syn (print fs) 'slash 'dir)))
 
 (defun get-mode (fs)
   "return the mode a functor -- nil if not a functor"
@@ -95,38 +100,6 @@
   (search-syn fs 'in))
 
 
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;    Lexicon Management        ;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
-;; A functional wrappaer to interact with the lexicon
-
-(defun lexicon (&rest input)
-  (apply (*state* :lexicon) input))
-
-
-(defun read-lexicon (&key (path (*state* :debug-lexicon-path)))
-  "Reads lexical entries from path, parses them into signs, and stores them in a aux:multi-set-table (see aux.lisp).
-   the global var (*state* :lexicon) ends up pointing to a closure where one can add, get or
-   query lexical entries using the top level phon feature.
-   The closure (*state* :lexicon) is a mapping from phon to the list of signs associated with that phon"
-  (with-open-file (instr path :direction :input)
-    (format t "~%Read ~A items.~%"
-            (do ((count 0 (+ 1 count))
-                 (item
-                   (read instr nil 'eof)
-                   (read instr nil 'eof)))
-                ((eq item 'eof) count)
-                (let ((sign (construct-sign item)))
-                  (lexicon (sign-phon sign) sign))))))
-
-(defun construct-sign (lex)
-  (make-sign :phon (cadr (assoc 'phon lex))
-             :syn (unifier:refresh-vars (cadr (assoc 'syn lex)))
-             :sem (cadr (assoc 'sem lex))))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;         Combinators          ;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -139,10 +112,10 @@
 (defparameter t-comb
   '(lam x (lam y (y x))))
 
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;         Combination          ;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 
 (defstruct (combination)
   left-input
@@ -192,7 +165,7 @@
          (let ((result (_apply lsyn rsyn)))
            (when result
              (list result '> 'a))))
-    (and (eq 'backward (get-dir rsyn))
+    (and (eq 'backward  (get-dir rsyn))
          (let ((result (_apply rsyn lsyn)))
            (when result
              (list result '< 'a))))))
@@ -267,7 +240,7 @@
       enums
       (generate-enums
         (cdr sentence)
-        (let ((entries (lexicon (car sentence))))
+        (let ((entries (apply (*state* :lexicon) (list (car sentence)))))
           (mapcan
             #'(lambda (x)
                 (mapcar
@@ -297,10 +270,17 @@
   "eliminates semantically spurious parses -- see aux.lisp for aux:uniq"
   (aux:uniq set-of-parses #'(lambda (x y) (sign-sem-equalp (car x) (car y)))))
 
-;;;
-;;; Initialization
-;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;    Lexicon Management        ;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun init-parser ()
-  (lexicon-parser:parse-lexicon)
-  (read-lexicon))
+(defun load-lexicon ()
+  "Loads lexical items to aux:multi-set-table (see aux.lisp).
+   the global var (*state* :lexicon) ends up pointing to a closure where one can add, get or
+   query lexical entries using the top level phon feature.
+   The closure (*state* :lexicon) is a mapping from phon to the list of signs associated with that phon"
+  (do ((count 0 (+ 1 count))
+       (items (lexicon-reader:read-lexicon) (cdr items)))
+      ((endp items) count)
+      (let ((sign (construct-sign (car items))))
+        (apply (*state* :lexicon) (list (sign-phon sign) sign) ))))

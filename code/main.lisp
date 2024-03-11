@@ -2,10 +2,10 @@
 (declaim (sb-ext:muffle-conditions cl:warning))
 
 (load "~/.sbclrc")
-;(require "str")
-(require "uiop")
+(ql:quickload :uiop :silent t)
 (ql:quickload :str :silent t)
-
+(ql:quickload :cl-ppcre :silent t)
+(rename-package "CL-PPCRE" "CL-PPCRE" '("PPCRE" "RE"))
 
 ;; init a global *state* closure available everywhere
 (setf  (symbol-function '*state*)
@@ -20,7 +20,7 @@
 (mapc
   (lambda (name)
     (load (str:concat name ".lisp")))
-  '("aux" "unifier"  "lc-q" "pprinter" "sr-parser" "syn-parser" "sem-parser" "lexicon-parser" "ccg"))
+  '("aux" "unifier"  "lc-q" "pprinter" "sr-parser" "syn-parser" "sem-parser" "lexicon-reader" "ccg"))
 
 (defun proc-input (input)
   (case input
@@ -139,11 +139,11 @@
 
   (run-program "/usr/bin/clear" nil :output *standard-output*)
   (format t "Welcome to SmallWorld~%~%A linguists' parser based on CCG~%~%Type :help for help, :quit for quit.~%")
-  (format t "~%Initing parser...")
   (format t "~%~%Reading the theory found at ~a . . ." (pathname-name (*state* :theory-path)))
 
-  (init-parser)
-
+  (format t "~%~%Loading the lexicon found at ~a . . ." (pathname-name (*state* :lexicon-path)))
+  (format t "~%~%Loaded ~D items." (load-lexicon))
+  
   (*state* 'vocab (funcall (*state* :lexicon) :keys))
   (format t "~%")
   (format t "done~%~%")
