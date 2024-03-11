@@ -299,8 +299,6 @@
                        (lalr-parse (sem-tokenizer sem) with :sem-parser)
                        (aux:string-to-list tokens))))
                (read-entries (aux:read-file-as-string (*state* :lexicon-path))))))
-    (format t "~%Reading the lexicon found at ~a . . . "
-            (pathname-name (*state* :lexicon-path)))
     "then add items to the syn-lexicon on the basis of *feature-dictionary*"
     (dolist (x (*state* :feature-dictionary))
       (dolist (y (cdr x))

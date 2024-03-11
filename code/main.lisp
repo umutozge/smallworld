@@ -33,7 +33,7 @@
      (princ (toggle-flag :eta-normalization)) (terpri))
     ((:switch-derivation :sd)
      (princ (toggle-flag :derivation)) (terpri))
-    ((:switch-uniq-parses :su)
+    ((:switch-uniq :su)
      (princ (toggle-flag :uniq-parses)) (terpri))
     ((:parse :p)
      (terpri) (princ (parse-expr)) (terpri) (terpri))
@@ -43,11 +43,11 @@
     (otherwise (princ "unknown command") (terpri))))
 
 (defun display-help ()
-  (let ((data '((":parse (:p) <sentence>" "parse the provided sentence into an applicative form")
+  (let ((data '((":parse (:p) <expression>" "parse the provided expression")
                 (":show-vocab (:sv)" "display the vocabulary")
                 (":switch-derivation (:sd)" "turn on/off display of derivations")
                 (":switch-eta (:se)" "turn on/off eta-normalization of logical forms")
-                (":switch-uniq-parses (:su)" "turn on/off eliminating semantically spurious parses")
+                (":switch-uniq (:su)" "turn on/off eliminating semantically spurious parses")
                 (":reload (:rl)" "reload the system")
                 (":help (:h)" "help")
                 (":quit (:q)" "quit"))))
@@ -103,13 +103,6 @@
 (defun toggle-flag (flag)
   (*state* flag (not (*state* flag))))
 
-
-(defun switch-eta-normalization ()
-  (*state* :eta-normalize (not (*state* :eta-normalize))))
-
-(defun switch-uniq-parses ()
-  (*state* :uniq-parses (not (*state* :uniq-parses))))
-
 (defun command-line ()
   (or
     #+CLISP *args*
@@ -129,24 +122,21 @@
   (*state* :debug-lexicon-path (aux:string-to-pathname (*state* :project-path) "/_lexicon.lisp" ))
   (if (probe-file (*state* :debug-lexicon-path))
       (delete-file (*state* :debug-lexicon-path)))
-  (*state* :lexicon-path (aux:string-to-pathname (*state* :project-path) "/lexicon.lisp" ))
-  (*state* :theory-path (aux:string-to-pathname (*state* :project-path) "/theory.lisp"))
+  (*state* :lexicon-path (aux:string-to-pathname (*state* :project-path) (concatenate 'string "/" (*state* :prompt) ".lex")))
+  (*state* :theory-path (aux:string-to-pathname (*state* :project-path) (concatenate 'string "/" (*state* :prompt) ".thr")))
   (*state* :theory (aux:read-from-file (*state* :theory-path)))
   (*state* :base-cat-template       (cadr (assoc 'base-cat-template (*state* :theory))))
   (*state* :feature-dictionary      (cdr  (assoc 'feature-dictionary (*state* :theory))))
   (*state* :category-bundle-symbols (cdr  (assoc 'category-bundle-symbols (*state* :theory))))
-
-
   (run-program "/usr/bin/clear" nil :output *standard-output*)
   (format t "Welcome to SmallWorld~%~%A linguists' parser based on CCG~%~%Type :help for help, :quit for quit.~%")
-  (format t "~%~%Reading the theory found at ~a . . ." (pathname-name (*state* :theory-path)))
-
-  (format t "~%~%Loading the lexicon found at ~a . . ." (pathname-name (*state* :lexicon-path)))
-  (format t "~%~%Loaded ~D items." (load-lexicon))
-  
+  (format t "~%------------------------------" )
+  (format t "~%Theory: ~a" (pathname-name (*state* :theory-path)))
+  (format t "~%Lexicon: ~a" (pathname-name (*state* :lexicon-path)))
+  (format t "~%Loaded ~D items." (load-lexicon))
+  (format t "~%------------------------------~%" )
   (*state* 'vocab (funcall (*state* :lexicon) :keys))
   (format t "~%")
-  (format t "done~%~%")
   (loop
     (format t "~a> " (*state* :prompt))
     (finish-output)
