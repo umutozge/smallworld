@@ -76,21 +76,29 @@ Now, you can run `smallworld` from anywhere on your system. You need to specify 
 smallworld <project-directory>
 ```
 
-If you installed `rlwrap` -- which is highly recommended -- you can run the command as:
+or, if you are already in the project directory, just:
 
 ```bash
-rlwrap smallworld <project-directory>
+smallworld
 ```
 
-#### How to update
+If you installed `rlwrap` -- which is highly recommended -- replace `smallworld`
+with `rlwrap smallworld` in your commands.
 
+
+#### How to update
 
 To update `SmallWorld`, do,
 
 ```bash
 git pull origin main
 ```
-when in somewhere in the `smallworld` folder. Your local project files will NOT be overwritten or get lost. Re-run the install script for changes to take effect.
+
+when in somewhere in the `smallworld` folder. Your local project files will NOT
+be overwritten or get lost. Re-run the install script for changes to take
+effect. Incidentaly, it is a good practice to keep your projects NOT in the
+`smallworld` directory, since at some point you might have to delete your
+`smallworld` directory and re-clone it.
 
 </details>
 
@@ -100,7 +108,17 @@ when in somewhere in the `smallworld` folder. Your local project files will NOT 
 
 ##### Projects
 
-A project consists of `theory.lisp` and `lexicon.lisp` files. The `lexicon.lisp` file is where you enter your lexicon; inspecting the file `projects/basic/lexicon.lisp` should be enough to understand its syntax. Understanding the function of `theory.lisp` requires having grasped some other concepts.
+A project consists of the files `<project-name>.lex` and `<project-name>.thr`
+files, and optionally `<project-name>.fst` for morphological analyses. **These
+naming conventions are strict.** The `<project-name>.lex` file is where you
+enter your lexicon; inspecting the file `projects/basic/basic.lex` should be
+enough to understand its syntax. Understanding the function of
+`<project-name>.thr` requires having grasped some other concepts.
+
+Whenever you load a project, there will appear a file named `_lexicon.lisp` in
+your project folder. This file will be useful to inspect the details of your
+lexicon for debugging purposes.
+
 
 ###### Attribute-value matrices
 
@@ -162,23 +180,31 @@ In declaring category bundle symbols you only give the feature-value pairs that 
 
 ###### Internal representation of categories
 
-`SmallWorld` translates each category it finds in `lexicon.lisp` to its internal representation, which is written to the file `_lexicon.lisp` each time you load a lexicon.
+`SmallWorld` translates each category it finds in your `.lex` file to its internal representation, which is written to the file `_lexicon.lisp` each time you load a lexicon.
 
 
 Here is an example lexical entry.
 
 ```
-s\np[sg] : (lam x ($ x)) < sleeps walks works talks
+def mycat {
+s\np[sg];
+\x.lex'x;
+sleeps walks works talks
+}
 ```
-This entry defines the lexical category of 4 words. The `$` in the semantic interpretation gets replaced by the word during the translation into internal representation.
 
-The internal representation of a lexical category is an AVM with three main features: `PHON`, `SYN` and `SEM`. 
+This entry defines the lexical category of 4 words. The `lex'` in the semantic
+interpretation gets replaced by the listed tokens during the translation into
+internal representation.
+
+The internal representation of a lexical category is an AVM with three main
+features: `PHON`, `SYN` and `SEM`.
 
 ```lisp
 ((PHON SLEEPS)
  (SYN
   ((IN ((CAT N) (AGR SG) (BAR 2)))
-   (DIR BACKWARD)
+   (SLASH (DIR BACKWARD) (MODE DOT))
    (OUT ((CAT V) (AGR ?_) (BAR 1)))))
  (SEM (LAM X (SLEEPS X))))
 ```
@@ -187,7 +213,6 @@ The internal representation of a lexical category is an AVM with three main feat
 
 `SEM` is either an atom like `JOHN` or a lambda term. Inspecting the example lexicon will clarify how to write lambda terms.
 
-`SYN` is a complex feature which has another AVM as its value. For functional categories like `SLEEPS` above, the value of the `SYN` feature is an AVM with three features: `IN` for the input category, `DIR` for the slash, and `OUT` for the output category.
+`SYN` is a complex feature which has another AVM as its value. For functional categories like `SLEEPS` above, the value of the `SYN` feature is an AVM with three features: `IN` for the input category, `SLASH` for the directionality, and `OUT` for the output category.
 
-Studying the example `lexicon.lisp`, `theory.lisp` and the `_lexicon.lisp` generated on the basis of the former two will clarify how the system works.
 </details>

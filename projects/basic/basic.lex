@@ -2,9 +2,7 @@ SmallWorld sample lexicon
 -------------------------
 
 def proper-names {
-s/(s\np[sg]);
-\p.p lex';
-
+s/(s\np[sg]); \p.p lex';
 john
 mary
 }
@@ -13,7 +11,7 @@ def sg-intransitives {
 s\np[sg];
 \x.lex' x;
 
-talks
+talks walks
 }
 
 def pl-intransitives {
@@ -21,16 +19,17 @@ s\np[pl];
 \x.lex' x;
 
 talk
+walk
 }
 
-def s-gnouns {
+def sg-nouns {
 n[sg];
 \x.lex' x;
 
 spy
 }
 
-def plnouns {
+def pl-nouns {
 
 n[pl];
 \x.lex' x; 
@@ -59,7 +58,7 @@ def universal {
 every
 }
 
-def negativeq {
+def negative-q {
 (s/(s\np[sg]))/n[sg] ; 
 
 \p\q~Ex. p x & q x; 
