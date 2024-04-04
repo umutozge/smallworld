@@ -273,13 +273,13 @@
 (defun read-lexicon ()
   (labels ((read-entries (content)
              (let ((outer-scanner (re:create-scanner "def\\s+[^{]+\\s*{[^}]+}"))
-                   (inner-scanner (re:create-scanner "def\\s+([^{]+)\\s*{[ \\t\\n]*(.+)[ \\t\\n]*;[ \\t\\n]*([^}]+)[ \\t\\n]*;[ \\t\\n]*([^}]*)}")))
+                   (inner-scanner (re:create-scanner "def\\s+([^{(]+)\\s*[(]([^)]*)[)][ \\t\\n]*{[ \\t\\n]*(.+)[ \\t\\n]*;[ \\t\\n]*([^}]+)[ \\t\\n]*;[ \\t\\n]*([^}]*)}")))
                (mapcar
                  #'(lambda (entry)
                      (re:register-groups-bind
-                       (key syn sem forms)
+                       (key pos syn sem forms)
                        (inner-scanner entry)
-                       (list key syn sem forms)))
+                       (print (list key pos syn sem forms))))
                  (let ((store nil))
                    (re:do-matches-as-strings
                      (match outer-scanner content store)
@@ -291,9 +291,9 @@
            (generate-entry-list ()
              (mapcar
                #'(lambda (x)
-                   (let ((syn (second x))
-                         (sem (third x))
-                         (tokens (fourth x)))
+                   (let ((syn (third x))
+                         (sem (fourth x))
+                         (tokens (fifth x)))
                      (list
                        (lalr-parse (syn-tokenizer syn) with :syn-parser)
                        (lalr-parse (sem-tokenizer sem) with :sem-parser)

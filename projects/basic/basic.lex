@@ -1,20 +1,20 @@
 SmallWorld sample lexicon
 -------------------------
 
-def proper-names {
+def proper-names () {
 s/(s\np[sg]); \p.p lex';
 john
 mary
 }
 
-def sg-intransitives {
+def sg-intransitives () {
 s\np[sg];
 \x.lex' x;
 
 talks walks
 }
 
-def pl-intransitives {
+def pl-intransitives () {
 s\np[pl];
 \x.lex' x;
 
@@ -22,14 +22,14 @@ talk
 walk
 }
 
-def sg-nouns {
+def sg-nouns () {
 n[sg];
 \x.lex' x;
 
 spy
 }
 
-def pl-nouns {
+def pl-nouns () {
 
 n[pl];
 \x.lex' x; 
@@ -37,28 +37,28 @@ n[pl];
 spies 
 }
          
-def definite {
+def definite () {
 (s/(s\np))/n; 
 \p\q. q (lex' p);
 
 the
 }
 
-def existential {
+def existential () {
 (s/(s\np[sg]))/n[sg];
 \p\qEx. p x & q x;
 
 some 
 }
 
-def universal {
+def universal () {
 (s/(s\np[sg]))/n[sg];
 \p\qAx. p x > q x;
 
 every
 }
 
-def negative-q {
+def negative-q () {
 (s/(s\np[sg]))/n[sg] ; 
 
 \p\q~Ex. p x & q x; 

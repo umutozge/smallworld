@@ -1,5 +1,5 @@
 (declaim (optimize (speed 0) (safety 3) (debug 3)))
-(declaim (sb-ext:muffle-conditions cl:warning))
+;(declaim (sb-ext:muffle-conditions cl:warning))
 
 (load "~/.sbclrc")
 (ql:quickload :uiop :silent t)
@@ -113,6 +113,7 @@
 
 (defun main (&key (project-path nil))
   ;; decorate *state*
+  (*state* :morphology (member "-m" (uiop:command-line-arguments) :test #'string-equal))
   (*state* :eta-normalize t)
   (*state* :derivation nil)
   (*state* :uniq-parses nil)
