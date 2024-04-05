@@ -44,14 +44,16 @@
 (defmacro flip-bool (b)
   `(setf ,b (not ,b)))
 
-(defun multiset-table (&optional (ht (make-hash-table)))
+(defun multiset-table (&optional (ht (make-hash-table :test #'equal)))
   "a closure based hash table implementation of alist
-   to put, call with key and val -- duplicates are allowed;
-   to get, call with just key
-   call with :check key to check existence
-   call with :count to get count
-   call with :keys to get the list of keys
-   call with :get-table to get the embedded ht"
+
+   (f key val)    -- adds, duplicates are allowed;
+   (f key)        -- gets;
+   (f :check key) --  checks existence
+   (f :count)     -- get count
+   (f :keys)      -- get the list of keys
+   (f :get-table) -- get the embedded ht"
+
 	#'(lambda (&rest input)
             (let ((head (car input))
                   (tail (cadr input)))
@@ -74,7 +76,7 @@
                              (setf (gethash head ht) (list tail)))
                          (if (nth-value 1 (gethash head ht))
                              (nth-value 0 (gethash head ht))
-                             (error "Key unknown."))))))))
+                             (error (format nil "~a is unknown." head)))))))))
 
 (defun uniq (lst &optional (comparator #'equal))
   "like Unix uniq"

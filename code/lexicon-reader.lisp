@@ -273,28 +273,32 @@
 (defun read-lexicon ()
   (labels ((read-entries (content)
              (let ((outer-scanner (re:create-scanner "def\\s+[^{]+\\s*{[^}]+}"))
-                   (inner-scanner (re:create-scanner "def\\s+([^{(]+)\\s*[(]([^)]*)[)][ \\t\\n]*{[ \\t\\n]*(.+)[ \\t\\n]*;[ \\t\\n]*([^}]+)[ \\t\\n]*;[ \\t\\n]*([^}]*)}")))
+                   (inner-scanner (re:create-scanner "def\\s+([^{( ]+)\\s*[(]([^)]*)[)][ \\t\\n]*{[ \\t\\n]*(.+)[ \\t\\n]*;[ \\t\\n]*([^}]+)[ \\t\\n]*;[ \\t\\n]*([^}]*)}")))
                (mapcar
                  #'(lambda (entry)
                      (re:register-groups-bind
                        (key pos syn sem forms)
                        (inner-scanner entry)
-                       (print (list key pos syn sem forms))))
+                       (list key pos syn sem forms)))
                  (let ((store nil))
                    (re:do-matches-as-strings
                      (match outer-scanner content store)
                      (push match store))))))
-           (build-entry (phon syn sem)
-             `((phon ,phon)
+           (build-entry (key pos phon syn sem)
+             `((key ,key)
+               (pos ,pos)
+               (phon ,phon)
                (syn ,syn)
                (sem ,(sublis (list (cons 'common-lisp-user::lex phon)) sem))))
            (generate-entry-list ()
              (mapcar
-               #'(lambda (x)
-                   (let ((syn (third x))
-                         (sem (fourth x))
-                         (tokens (fifth x)))
+               #'(lambda (entry)
+                   (destructuring-bind
+                     (key pos syn sem tokens)
+                     entry 
                      (list
+                       key
+                       (if (*state* :morphology) pos '_)
                        (lalr-parse (syn-tokenizer syn) with :syn-parser)
                        (lalr-parse (sem-tokenizer sem) with :sem-parser)
                        (aux:string-to-list tokens))))
@@ -310,11 +314,11 @@
     (let ((store nil))
       (with-open-file (debug-stream (*state* :debug-lexicon-path) :direction :output)
         (dolist (entry (generate-entry-list))
-          (let ((syn (car entry))
-                (sem (cadr entry))
-                (tokens (caddr entry)))
+          (destructuring-bind
+            (key pos syn sem tokens)
+            entry
             (dolist (token tokens)
-              (let ((item (build-entry token syn sem)))
+              (let ((item (build-entry key pos token syn sem)))
                 (format debug-stream "~A~%~%" item)
                 (push item store))))))
       store)))

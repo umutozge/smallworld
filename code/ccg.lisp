@@ -30,10 +30,6 @@
   syn
   sem)
 
-(defun construct-sign (lex)
-  (make-sign :phon (cadr (assoc 'phon lex))
-             :syn (unifier:refresh-vars (cadr (assoc 'syn lex)))
-             :sem (cadr (assoc 'sem lex))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;    (Syntactic) Categories    ;;;;
@@ -220,26 +216,39 @@
 
 ;;; An enumeration is a list of signs ordered in surface order.
 ;;; Due to lexical ambiguity a surface form may have more than one enumeration.
-;;; So the first task is to map a surface form (ordered list of phons) to a set
-;;; of enumerations
+;;; So the first task is to map a surface form (ordered list of (pos phon)) to a set
+;;; of enumerations.
 
-(defun generate-enums (sentence &optional (enums '(nil)))
-  "map sentence (list of phons) to a set of enumerations"
-  (if (endp sentence)
-      enums
-      (generate-enums
-        (cdr sentence)
-        (let ((entries (apply (*state* :lexicon) (list (car sentence)))))
-          (mapcan
-            #'(lambda (x)
-                (mapcar
-                  #'(lambda (y)
-                      (append x (list y)))
-                  entries))
-            enums)))))
+(defun enumerate (input)
 
+  (labels ((morph-parse (input)
+             t)
 
-(defun parse (sentence)
+           (generate-enums (sentence &optional (enums '(nil)))
+             "map sentence (list of phons) to a set of enumerations"
+             (if (endp sentence)
+                 enums
+                 (generate-enums
+                   (cdr sentence)
+                   (let ((entries (funcall (*state* :lexicon) (car sentence))))
+                     (mapcan
+                       #'(lambda (x)
+                           (mapcar
+                             #'(lambda (y)
+                                 (append x (list y)))
+                             entries))
+                       enums)))))
+           ) 
+
+    (generate-enums
+      (if (*state* :morphology)
+        (morph-parse input)
+        (mapcar
+          #'(lambda (x)
+              (list '_ x))
+          input)))))
+
+(defun parse (expression)
   (mapcar
     #'(lambda (x)
         (setf (sign-sem (car x)) (funcall (if (*state* :eta-normalize)  #'eta-normalize 'identity) (sign-sem (car x))))
@@ -247,7 +256,7 @@
     (mapcan
       #'(lambda (x)
           (sr-parser:parse (list (cons nil x)) #'combine))
-      (generate-enums sentence))))
+      (enumerate expression))))
 
 ;;; An equality predicate for semantic interpretations
 
@@ -264,12 +273,22 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun load-lexicon ()
-  "Loads lexical items to aux:multi-set-table (see aux.lisp).
-   the global var (*state* :lexicon) ends up pointing to a closure where one can add, get or
-   query lexical entries using the top level phon feature.
-   The closure (*state* :lexicon) is a mapping from phon to the list of signs associated with that phon"
-  (do ((count 0 (+ 1 count))
-       (items (read-lexicon) (cdr items)))
-      ((endp items) count)
-      (let ((sign (construct-sign (car items))))
-        (apply (*state* :lexicon) (list (sign-phon sign) sign) ))))
+  "Loads lexical items fetched by read-lexicon to aux:multi-set-table pointed to by (*state* :lexicon).
+   
+   Keys to the lexicon are (pos phon)"
+  
+  (labels ((push-item (item)
+             "item is an alist: (key pos phon syn sem)"
+             (let* ((sign (construct-sign item))
+                    (pos (cadr (assoc 'pos item)))
+                    (phon (sign-phon sign)))
+               (funcall (*state* :lexicon) (print (list pos phon)) sign)))
+           (construct-sign (lex)
+             (make-sign :phon (cadr (assoc 'phon lex))
+                        :syn (unifier:refresh-vars (cadr (assoc 'syn lex)))
+                        :sem (cadr (assoc 'sem lex)))))
+
+    (do ((count 0 (+ 1 count))
+          (items (read-lexicon) (cdr items)))
+        ((endp items) (progn (print (funcall (*state* :lexicon) :keys)) count))
+        (push-item (car items)))))

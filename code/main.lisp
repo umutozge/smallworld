@@ -68,31 +68,30 @@
 ;                i
 ;                (mapcar sign-sem (uniq-parses (parse-expr i)))))))) ; TODO can't display ambiguity
 
-(defun parse-expr (&optional sent)
-  (let* ((sentence (or sent (aux:string-to-list (read-line))))
-         (unk (check-vocab sentence)))
-    (if unk
-        (format nil "~A is unknown" unk)
-        (progn
-          (mapc
-            #'(lambda (item)
-                (format t "~%--------------------PARSE ~D--------------------~%" (car item))
-                (format t "~A~%" (caadr item))
-                (format t "~%~A~%" (pprinter:print-text (sign-sem (caadr item))))
-                (format t "~%~A~%" (pprinter:print-tex (sign-sem (caadr item))))
-                (format t "~%------------------------------------------------~%")
-                (when (*state* :derivation) 
-                  (format t "~%--------------------DERIV ~D--------------------~%" (car item))
-                  (format t "~A~%" (cadr item))
-                  (format t "~%------------------------------------------------~%")))
-            (aux:enum
-              (funcall
-                (if (*state* :uniq-parses)
-                    #'uniq-parses
-                    #'identity)
-                (parse sentence))
-              1))
-          ""))))
+(defun parse-expr (&optional expr)
+  (let* ((expression (or expr (aux:string-to-list (read-line)))))
+    (progn
+      (mapc
+        #'(lambda (item)
+            (format t "~%--------------------PARSE ~D--------------------~%" (car item))
+            (format t "~A~%" (caadr item))
+            (format t "~%~A~%" (pprinter:print-text (sign-sem (caadr item))))
+            (format t "~%~A~%" (pprinter:print-tex (sign-sem (caadr item))))
+            (format t "~%------------------------------------------------~%")
+            (when (*state* :derivation) 
+              (format t "~%--------------------DERIV ~D--------------------~%" (car item))
+              (format t "~A~%" (cadr item))
+              (format t "~%------------------------------------------------~%")))
+        (aux:enum
+          (funcall
+            (if (*state* :uniq-parses)
+                #'uniq-parses
+                #'identity)
+            (handler-case (parse expression)
+              (simple-error (e)
+                            (format t "~A" e))))
+          1))
+      "")))
 
 
 (defun check-vocab (sentence)
