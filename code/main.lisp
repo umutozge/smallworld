@@ -7,6 +7,8 @@
 (ql:quickload :cl-ppcre :silent t)
 (rename-package "CL-PPCRE" "CL-PPCRE" '("PPCRE" "RE"))
 
+(setf *print-pretty* T) ; TODO remove if ineffective
+
 ;; init a global *state* closure available everywhere
 (setf  (symbol-function '*state*)
        (let ((table (make-hash-table)))
@@ -20,7 +22,7 @@
 (mapc
   (lambda (name)
     (load (str:concat name ".lisp")))
-  '("aux" "unifier"  "lc-q" "pprinter" "sr-parser" "syn-parser" "sem-parser" "lexicon-reader" "ccg"))
+  '("aux" "unifier"  "lc-q" "pprinter" "sr-parser" "syn-parser" "sem-parser" "lexicon-reader" "ccg" "flookup"))
 
 (defun proc-input (input)
   (case input
@@ -28,7 +30,19 @@
      (display-help))
     ((:quit :q) (princ "bye, come again!") (terpri) (quit))
     ((:show-vocab :sv)
-     (format t "~{~{~6S~^ ~}~%~}" (aux:partition (*state* 'vocab) 5)) (terpri))
+     (format t "~{~{~10A~^ ~}~%~}" (aux:partition (mapcar
+                                                      #'(lambda (x)
+                                                          (format nil "~a (~a)" (first x) (second x)))
+                                                      (sort
+                                                        (mapcar
+                                                          #'(lambda (lexkey)
+                                                              (list (lexkey-phon lexkey) (lexkey-cat lexkey)))
+                                                          (*state* 'vocab))
+                                                        #'string<
+                                                        :key #'(lambda (x) (symbol-name (second x)))
+                                                        ))
+                                                 8))
+     (terpri))
     ((:switch-eta :se)
      (princ (toggle-flag :eta-normalization)) (terpri))
     ((:switch-derivation :sd)
@@ -93,12 +107,6 @@
           1))
       "")))
 
-
-(defun check-vocab (sentence)
-  (dolist (x sentence)
-    (if (not (member x (*state* 'vocab)))
-        (return x))))
-
 (defun toggle-flag (flag)
   (*state* flag (not (*state* flag))))
 
@@ -129,10 +137,17 @@
                                                                                (list :relative))
                                                                            (list (pathname-name cl-pathname)))))))
                                                   (t (sb-posix:getcwd))))))
+
+  (uiop:chdir (*state* :project-path))
+
   (*state* :prompt (car (last (pathname-directory (*state* :project-path)))))
+
+  (if (*state* :morphology) (setup-morph-analyzer (*state* :prompt)))
+
   (*state* :debug-lexicon-path (make-pathname :name "_lexicon" :type ".lisp" :directory (pathname-directory (*state* :project-path))))
   (if (probe-file (*state* :debug-lexicon-path))
       (delete-file (*state* :debug-lexicon-path)))
+
   (*state* :lexicon-path (make-pathname :name (*state* :prompt) :type "lex" :directory  (pathname-directory (*state* :project-path))))
   (*state* :theory-path (make-pathname :name (*state* :prompt) :type "thr" :directory (pathname-directory (*state* :project-path))))
   (*state* :theory (aux:read-from-file (*state* :theory-path)))

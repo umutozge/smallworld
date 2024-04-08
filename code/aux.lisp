@@ -36,7 +36,9 @@
            :prompt
            :write-string-to-file
            :tree2avm
-           :tree2qtree))
+           :tree2qtree
+           :cartesian-product
+           ))
 
 (in-package aux)
 
@@ -44,7 +46,7 @@
 (defmacro flip-bool (b)
   `(setf ,b (not ,b)))
 
-(defun multiset-table (&optional (ht (make-hash-table :test #'equal)))
+(defun multiset-table (&optional (ht (make-hash-table :test #'equalp)))
   "a closure based hash table implementation of alist
 
    (f key val)    -- adds, duplicates are allowed;
@@ -138,10 +140,31 @@
   (read *query-io*))
 
 
+(defun cartesian-product (seqs)
+  "return the cross-product of items in seq using the :operation"
+  (labels ((binary-product (seqA seqB)
+             "product of two sequences"
+             (reduce
+               #'append
+               (mapcar
+                 #'(lambda (x)
+                     (mapcar
+                       #'(lambda (y)
+                           (append x y))
+                       seqB))
+                 seqA))))
+    
+    (reduce
+      #'binary-product
+      seqs
+      )
+    )
+  )
+
+
 ;;;;;;;;;;;;;;;;;;
 ;; SYMBOL UTILS ::
 ;;;;;;;;;;;;;;;;;;
-
 
 (defun symbol= (a b)
   "ignore their packages in comparin symbols"

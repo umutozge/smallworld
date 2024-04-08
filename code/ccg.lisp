@@ -15,6 +15,7 @@
 
 (declaim #+sbcl(sb-ext:muffle-conditions style-warning))
 
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;     Signs                    ;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -30,6 +31,14 @@
   syn
   sem)
 
+(defstruct lexkey
+   (cat '_   :type symbol)
+   (phon '_  :type (or symbol integer)))
+
+;;; A way to talk to the lexicon closure
+
+(defmacro lexicon (&body body)
+  `(funcall (*state* :lexicon) ,@body))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;    (Syntactic) Categories    ;;;;
@@ -66,23 +75,6 @@
            (attr-val-pair-p (exp)
              (and (consp exp) (= 2 (length exp)))))
     (s-syn fs path)))
-
-
-(defun get-dir (fs)
-  "return the directionality of a functor -- nil if not a functor"
-  (search-syn fs 'slash 'dir))
-
-(defun get-mode (fs)
-  "return the mode a functor -- nil if not a functor"
-  (search-syn fs 'slash 'mode))
-
-(defun get-output (fs)
-  "return the output of a functor -- nil if not a functor"
-  (search-syn fs 'out))
-
-(defun get-input (fs)
-  "return the input of a functor -- nil if not a functor"
-  (search-syn fs 'in))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -146,19 +138,19 @@
   "combine sign-syn's  with application, if possible
    return (sign-syn direction combinator) or NIL"
   (or
-    (and (eq 'forward (get-dir lsyn))
+    (and (eq 'forward (search-syn lsyn 'slash 'dir))
          (let ((result (_apply lsyn rsyn)))
            (when result
              (list result '> 'a))))
-    (and (eq 'backward  (get-dir rsyn))
+    (and (eq 'backward  (search-syn rsyn 'slash 'dir))
          (let ((result (_apply rsyn lsyn)))
            (when result
              (list result '< 'a))))))
 
 (defun _apply (func arg)
-  (multiple-value-bind (bindings yes) (unifier:tree-match (get-input func) arg)
+  (multiple-value-bind (bindings yes) (unifier:tree-match (search-syn func 'in) arg)
 	(if yes
-	  (sublis bindings (get-output func)))))
+	  (sublis bindings (search-syn func 'out)))))
 
 ;;; Composition
 
@@ -166,27 +158,27 @@
   "combine sign-syn's  with composition, if possible
    return (sign-syn direction combinator) or NIL"
   (or
-    (and (eql 'forward (get-dir lsyn))
-         (eql 'dot (get-mode lsyn)) ; TODO implement modal hierarchy
+    (and (eql 'forward (search-syn lsyn 'slash 'dir))
+         (eql 'dot (search-syn lsyn 'slash 'mode)) ; TODO implement modal hierarchy
          (let ((result (_compose lsyn rsyn)))
            (if result
                (list result '> 'b))))
-    (and (eql 'backward (get-dir rsyn))
-         (eql 'dot (get-mode rsyn))
+    (and (eql 'backward (search-syn rsyn 'slash 'dir))
+         (eql 'dot (search-syn rsyn 'slash 'mode))
          (let ((result (_compose rsyn lsyn)))
            (if result
                (list result '< 'b))))))
 
 (defun _compose (f g)
   "combine the cats with composition, if possible"
-  (multiple-value-bind (bindings yes) (unifier:tree-match (get-input f) (get-output g))
+  (multiple-value-bind (bindings yes) (unifier:tree-match (search-syn f 'in) (search-syn g 'out))
     (if yes
         (list
           (cons 'in
-                (list (sublis bindings (get-input g))))
-          (list 'slash (list (list 'dir (get-dir g)) (list 'mode (get-mode g))))
+                (list (sublis bindings (search-syn g 'in))))
+          (list 'slash (list (list 'dir (search-syn g 'slash 'dir)) (list 'mode (search-syn g 'slash 'mode))))
           (cons 'out
-                (list (sublis bindings (get-output f))))))))
+                (list (sublis bindings (search-syn f 'out))))))))
 
 ;;; Semantic composition
 
@@ -219,18 +211,40 @@
 ;;; So the first task is to map a surface form (ordered list of (pos phon)) to a set
 ;;; of enumerations.
 
+(defun morph-parse (expression)
+  "string -> ((lexkeys)s)
+
+   Input: string
+   Output: list of list of pairs
+  "
+  (labels ((wrap-string-in-parentheses (str)
+             (concatenate 'string "(" str ")"))
+           (swap-pairs (list-of-pairs)
+             (mapcar
+               #'(lambda (pair)
+                (make-lexkey :cat (second pair) :phon (first pair)))
+               list-of-pairs)))
+    (mapcar
+      #'(lambda (x)
+          (swap-pairs
+            (aux:partition
+              (read-from-string
+                (wrap-string-in-parentheses x))
+              2))) 
+      (typecase expression 
+        (simple-base-string (flookup expression))
+        (symbol (flookup (str:downcase (symbol-name expression))))))))
+
 (defun enumerate (input)
 
-  (labels ((morph-parse (input)
-             t)
-
-           (generate-enums (sentence &optional (enums '(nil)))
-             "map sentence (list of phons) to a set of enumerations"
+  (labels ((generate-enums (sentence &optional (enums '(nil)))
+             "map a list of (pos phon) pairs to a set of enumerations,
+              where each enumeration is a sequence of signs."
              (if (endp sentence)
                  enums
                  (generate-enums
                    (cdr sentence)
-                   (let ((entries (funcall (*state* :lexicon) (car sentence))))
+                   (let ((entries (lexicon (car sentence))))
                      (mapcan
                        #'(lambda (x)
                            (mapcar
@@ -240,12 +254,15 @@
                        enums)))))
            ) 
 
-    (generate-enums
       (if (*state* :morphology)
-        (morph-parse input)
-        (mapcar
+          (aux:cartesian-product
+            (mapcar 
+              #'morph-parse
+              input))
+        (generate-enums  
+         (mapcar
           #'(lambda (x)
-              (list '_ x))
+              (make-lexkey :phon x))
           input)))))
 
 (defun parse (expression)
@@ -280,9 +297,9 @@
   (labels ((push-item (item)
              "item is an alist: (key pos phon syn sem)"
              (let* ((sign (construct-sign item))
-                    (pos (cadr (assoc 'pos item)))
+                    (cat (cadr (assoc 'cat item)))
                     (phon (sign-phon sign)))
-               (funcall (*state* :lexicon) (print (list pos phon)) sign)))
+               (lexicon (make-lexkey :cat cat :phon phon) sign)))
            (construct-sign (lex)
              (make-sign :phon (cadr (assoc 'phon lex))
                         :syn (unifier:refresh-vars (cadr (assoc 'syn lex)))
@@ -290,5 +307,5 @@
 
     (do ((count 0 (+ 1 count))
           (items (read-lexicon) (cdr items)))
-        ((endp items) (progn (print (funcall (*state* :lexicon) :keys)) count))
+        ((endp items) (progn (lexicon :keys) count))
         (push-item (car items)))))

@@ -265,7 +265,6 @@
                                                                      #'expand-feature
                                                                      add-features))))))
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;       Main drive       ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -277,28 +276,35 @@
                (mapcar
                  #'(lambda (entry)
                      (re:register-groups-bind
-                       (key pos syn sem forms)
+                       (key cat syn sem forms)
                        (inner-scanner entry)
-                       (list key pos syn sem forms)))
+                       (list
+                         (read-from-string key)
+                         (if (or (string= cat "") (not (*state* :morphology)))
+                             '_
+                             (read-from-string cat))
+                         syn
+                         sem
+                         forms)))
                  (let ((store nil))
                    (re:do-matches-as-strings
                      (match outer-scanner content store)
                      (push match store))))))
-           (build-entry (key pos phon syn sem)
-             `((key ,key)
-               (pos ,pos)
+           (build-entry (key cat phon syn sem)
+             `((key  ,key)
+               (cat  ,cat)
                (phon ,phon)
-               (syn ,syn)
-               (sem ,(sublis (list (cons 'common-lisp-user::lex phon)) sem))))
+               (syn  ,syn)
+               (sem  ,(sublis (list (cons 'common-lisp-user::lex phon)) sem))))
            (generate-entry-list ()
              (mapcar
                #'(lambda (entry)
                    (destructuring-bind
-                     (key pos syn sem tokens)
+                     (key cat syn sem tokens)
                      entry 
                      (list
                        key
-                       (if (*state* :morphology) pos '_)
+                       (if (*state* :morphology) cat '_)
                        (lalr-parse (syn-tokenizer syn) with :syn-parser)
                        (lalr-parse (sem-tokenizer sem) with :sem-parser)
                        (aux:string-to-list tokens))))
@@ -315,10 +321,10 @@
       (with-open-file (debug-stream (*state* :debug-lexicon-path) :direction :output)
         (dolist (entry (generate-entry-list))
           (destructuring-bind
-            (key pos syn sem tokens)
+            (key cat syn sem tokens)
             entry
             (dolist (token tokens)
-              (let ((item (build-entry key pos token syn sem)))
+              (let ((item (build-entry key cat token syn sem)))
                 (format debug-stream "~A~%~%" item)
                 (push item store))))))
       store)))
