@@ -211,31 +211,14 @@
 ;;; So the first task is to map a surface form (ordered list of (pos phon)) to a set
 ;;; of enumerations.
 
-(defun morph-parse (expression)
-  "string -> ((lexkeys)s)
-
-   Input: string
-   Output: list of list of pairs
-  "
-  (labels ((wrap-string-in-parentheses (str)
-             (concatenate 'string "(" str ")"))
-           (swap-pairs (list-of-pairs)
-             (mapcar
-               #'(lambda (pair)
-                (make-lexkey :cat (second pair) :phon (first pair)))
-               list-of-pairs)))
-    (mapcar
-      #'(lambda (x)
-          (swap-pairs
-            (aux:partition
-              (read-from-string
-                (wrap-string-in-parentheses x))
-              2))) 
-      (typecase expression 
-        (simple-base-string (flookup expression))
-        (symbol (flookup (str:downcase (symbol-name expression))))))))
 
 (defun enumerate (input)
+  "
+  Input: list of symbols entered at :p prompt.
+  Output: list of all possible enumerations, each a list of signs.
+
+  Enumerator works with and without (*state* :morphology)
+  "
 
   (labels ((generate-enums (sentence &optional (enums '(nil)))
              "map a list of (pos phon) pairs to a set of enumerations,
@@ -252,18 +235,55 @@
                                  (append x (list y)))
                              entries))
                        enums)))))
+
+           (morph-parse (expression)
+             "string -> ((lexkeys)s)
+
+              Input: string
+              Output: list of list of pairs
+              "
+             (labels ((wrap-string-in-parentheses (str)
+                        (concatenate 'string "(" str ")"))
+                      (swap-pairs (list-of-pairs)
+                        (mapcar
+                          #'(lambda (pair)
+                              (make-lexkey :cat (second pair) :phon (first pair)))
+                          list-of-pairs)))
+               (mapcar
+                 #'(lambda (x)
+                     (swap-pairs
+                       (aux:partition
+                         (read-from-string
+                           (wrap-string-in-parentheses x))
+                         2))) 
+                 (typecase expression 
+                   (simple-base-string (flookup expression))
+                   (symbol (flookup (str:downcase (symbol-name expression))))))))
            ) 
 
       (if (*state* :morphology)
-          (aux:cartesian-product
-            (mapcar 
-              #'morph-parse
-              input))
-        (generate-enums  
-         (mapcar
-          #'(lambda (x)
-              (make-lexkey :phon x))
-          input)))))
+          (reduce
+            #'append
+            (mapcar
+              #'generate-enums
+              (with-debug (aux:cartesian-product
+                                   (mapcar 
+                                     #'morph-parse
+                                     input))
+                          :message "Morph parses:"
+                          :transform #'(lambda (parse-list)
+                                         (mapcar
+                                           #'(lambda (parse)
+                                               (mapcar 
+                                                 #'(lambda (lexkey)
+                                                     (list (lexkey-phon lexkey) (lexkey-cat lexkey)))
+                                                 parse))
+                                           parse-list)))))
+          (generate-enums  
+            (mapcar
+              #'(lambda (x)
+                  (make-lexkey :phon x))
+              input)))))
 
 (defun parse (expression)
   (mapcar
@@ -273,7 +293,9 @@
     (mapcan
       #'(lambda (x)
           (sr-parser:parse (list (cons nil x)) #'combine))
-      (enumerate expression))))
+      (with-debug
+        (enumerate expression)
+        :message "Enumerations:"))))
 
 ;;; An equality predicate for semantic interpretations
 
@@ -306,6 +328,11 @@
                         :sem (cadr (assoc 'sem lex)))))
 
     (do ((count 0 (+ 1 count))
-          (items (read-lexicon) (cdr items)))
+          (items
+            (handler-case (read-lexicon)
+              (SB-KERNEL::ARG-COUNT-ERROR (e)
+                                          (format t "~%~%~A***BROKEN LEXICON, REVISE and :RELOAD.***~%~%" #\Tab )
+                                          ))
+            (cdr items)))
         ((endp items) (progn (lexicon :keys) count))
         (push-item (car items)))))

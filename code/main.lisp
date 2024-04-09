@@ -7,7 +7,15 @@
 (ql:quickload :cl-ppcre :silent t)
 (rename-package "CL-PPCRE" "CL-PPCRE" '("PPCRE" "RE"))
 
-(setf *print-pretty* T) ; TODO remove if ineffective
+(setf *print-pretty* t) ; TODO remove if ineffective
+
+
+(defmacro with-debug (expression &key (message "DEBUG:") (transform #'identity))
+  `(let ((val ,expression))
+     (when (*state* :debug-mode)
+       (format t "~A~%~%~{~A~%~%~}~%~%" ,message (funcall ,transform val) ))
+     val))
+
 
 ;; init a global *state* closure available everywhere
 (setf  (symbol-function '*state*)
@@ -45,6 +53,8 @@
      (terpri))
     ((:switch-eta :se)
      (princ (toggle-flag :eta-normalization)) (terpri))
+    ((:switch-debug-mode :sdm)
+     (princ (toggle-flag :debug-mode)) (terpri))
     ((:switch-derivation :sd)
      (princ (toggle-flag :derivation)) (terpri))
     ((:switch-uniq :su)
@@ -62,6 +72,7 @@
                 (":switch-derivation (:sd)" "turn on/off display of derivations")
                 (":switch-eta (:se)" "turn on/off eta-normalization of logical forms")
                 (":switch-uniq (:su)" "turn on/off eliminating semantically spurious parses")
+                (":switch-debug-mode (:sdm)" "turn on/off debug messages")
                 (":reload (:rl)" "reload the system")
                 (":help (:h)" "help")
                 (":quit (:q)" "quit"))))
@@ -122,6 +133,7 @@
   ;; decorate *state*
   (*state* :morphology (member "-m" (uiop:command-line-arguments) :test #'string-equal))
   (*state* :eta-normalize t)
+  (*state* :debug-mode t)
   (*state* :derivation nil)
   (*state* :uniq-parses nil)
   (*state* :lexicon (aux:multiset-table))

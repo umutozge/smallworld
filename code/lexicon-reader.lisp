@@ -264,7 +264,6 @@
                                                                    (mapcar
                                                                      #'expand-feature
                                                                      add-features))))))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;       Main drive       ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -307,7 +306,8 @@
                        (if (*state* :morphology) cat '_)
                        (lalr-parse (syn-tokenizer syn) with :syn-parser)
                        (lalr-parse (sem-tokenizer sem) with :sem-parser)
-                       (aux:string-to-list tokens))))
+                       (aux:string-to-list tokens))
+                       ))
                (read-entries (aux:read-file-as-string (*state* :lexicon-path))))))
     "then add items to the syn-lexicon on the basis of *feature-dictionary*"
     (dolist (x (*state* :feature-dictionary))
