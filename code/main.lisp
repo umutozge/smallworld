@@ -5,7 +5,23 @@
 (ql:quickload :uiop :silent t)
 (ql:quickload :str :silent t)
 (ql:quickload :cl-ppcre :silent t)
+(ql:quickload :unix-opts :silent t)
 (rename-package "CL-PPCRE" "CL-PPCRE" '("PPCRE" "RE"))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Command-line options ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(opts:define-opts
+  (:name :morphology
+   :description "invoke morphological parsing"
+   :short #\m
+   :long "morphology"))
+
+
+
+
+
 
 (setf *print-pretty* t) ; TODO remove if ineffective
 
@@ -129,26 +145,27 @@
     #+CMU extensions:*command-line-words*
     nil))
 
-(defun main (&key (project-path nil))
-  ;; decorate *state*
-  (*state* :morphology (member "-m" (uiop:command-line-arguments) :test #'string-equal))
+(defun main ()
+
+  (multiple-value-bind (options args)
+    (opts:get-opts)
+    (*state* :morphology (getf options :morphology))
+    (*state* :project-path (merge-pathnames (if args
+                                                (let ((cl-pathname (pathname (car args))))
+                                                  (if (null (pathname-name cl-pathname))
+                                                      cl-pathname 
+                                                      (make-pathname
+                                                       ; :defaults cl-pathname
+                                                        :directory (append
+                                                                     (or (pathname-directory cl-pathname)
+                                                                         (list :relative))
+                                                                     (list (pathname-name cl-pathname))))))
+                                                (sb-posix:getcwd)))))
   (*state* :eta-normalize t)
-  (*state* :debug-mode t)
+  (*state* :debug-mode nil)
   (*state* :derivation nil)
   (*state* :uniq-parses nil)
   (*state* :lexicon (aux:multiset-table))
-  (*state* :project-path (merge-pathnames (let ((cl (command-line)))
-                                            (cond (project-path project-path)
-                                                  (cl (let ((cl-pathname (pathname (cadr cl))))
-                                                        (if (null (pathname-name cl-pathname))
-                                                            cl-pathname 
-                                                            (make-pathname
-                                                              :defaults cl-pathname
-                                                              :directory (append
-                                                                           (or (pathname-directory cl-pathname)
-                                                                               (list :relative))
-                                                                           (list (pathname-name cl-pathname)))))))
-                                                  (t (sb-posix:getcwd))))))
 
   (uiop:chdir (*state* :project-path))
 
