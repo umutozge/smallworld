@@ -19,19 +19,7 @@
    :long "morphology"))
 
 
-
-
-
-
-(setf *print-pretty* t) ; TODO remove if ineffective
-
-
-(defmacro with-debug (expression &key (message "DEBUG:") (transform #'identity))
-  `(let ((val ,expression))
-     (when (*state* :debug-mode)
-       (format t "~A~%~%~{~A~%~%~}~%~%" ,message (funcall ,transform val) ))
-     val))
-
+(setf *print-pretty* t)
 
 ;; init a global *state* closure available everywhere
 (setf  (symbol-function '*state*)
@@ -46,7 +34,7 @@
 (mapc
   (lambda (name)
     (load (str:concat name ".lisp")))
-  '("aux" "unifier"  "lc-q" "pprinter" "sr-parser" "syn-parser" "sem-parser" "lexicon-reader" "ccg" "flookup"))
+  '("aux" "utils" "unifier" "lc-q"  "sr-parser" "syn-parser" "sem-parser" "lexicon-reader" "ccg" "flookup"))
 
 (defun proc-input (input)
   (case input
@@ -116,8 +104,8 @@
         #'(lambda (item)
             (format t "~%--------------------PARSE ~D--------------------~%" (car item))
             (format t "~A~%" (caadr item))
-            (format t "~%~A~%" (pprinter:print-text (sign-sem (caadr item))))
-            (format t "~%~A~%" (pprinter:print-tex (sign-sem (caadr item))))
+            (format t "~%~A~%" (pretty-print :type :sem :format :text :form (sign-sem (caadr item))))
+            (format t "~%~A~%" (pretty-print :type :sem :format :tex :form (sign-sem (caadr item))))
             (format t "~%------------------------------------------------~%")
             (when (*state* :derivation) 
               (format t "~%--------------------DERIV ~D--------------------~%" (car item))
