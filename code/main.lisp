@@ -172,9 +172,21 @@
   (*state* :lexicon-path (make-pathname :name (*state* :prompt) :type "lex" :directory  (pathname-directory (*state* :project-path))))
   (*state* :theory-path (make-pathname :name (*state* :prompt) :type "thr" :directory (pathname-directory (*state* :project-path))))
   (*state* :theory (aux:read-from-file (*state* :theory-path)))
-  (*state* :base-cat-template       (cadr (assoc 'base-cat-template (*state* :theory))))
+  (*state* :features                (cdr (assoc 'features (*state* :theory))))
+  (*state* :category-bundles (let ((bundles (cdr (assoc 'category-bundles (copy-alist (*state* :theory)))))
+                                   (default-features (*state* :features)))
+                               (mapcar
+                                 #'(lambda (bundle)
+                                     (let* ((bundle-features (cdr bundle))
+                                            (missing-features (remove-if
+                                                                        #'(lambda (feature)
+                                                                            (member feature bundle-features :key #'car))
+                                                                        default-features)))
+
+                                       (append bundle (mapcar #'(lambda (x) (list x (gensym "?"))) missing-features))))
+                                 bundles)))
+
   (*state* :feature-dictionary      (cdr  (assoc 'feature-dictionary (*state* :theory))))
-  (*state* :category-bundle-symbols (cdr  (assoc 'category-bundle-symbols (*state* :theory))))
   (run-program "/usr/bin/clear" nil :output *standard-output*)
   (format t "Welcome to SmallWorld~%~%A linguists' parser based on CCG~%~%Type :help for help, :quit for quit.~%")
   (format t "~%------------------------------" )

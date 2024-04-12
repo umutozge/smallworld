@@ -173,6 +173,7 @@
                     (#\\ 'BS)
                     (#\= 'EQ)
                     (#\* 'SM) ;slash modality
+                    (#\! 'FC) ;feature canceller
                     (#\+ '+)
                     (#\- '-))
                   store)))))))
@@ -186,20 +187,22 @@
                             (fs slash)
                             (bs slash)
                             (sm sm)
+                            (fc fc)
                             ($ $)
                             ))
 
 
 (defparameter syn-grammar
         '((cat --> acat fstr 		  #'(lambda (acat fs) (expand-base-category (cons (cadr acat) fs))))
-          (cat --> op cat cp 		  #'(lambda (op cat cp) cat))
           (cat --> cat slash cat	  #'(lambda (cat1 slash cat2) (list (list 'in cat2) (list 'slash (list (list 'dir (expand-slash slash)) (list 'mode 'dot))) (list 'out cat1))))
+          (cat --> op cat cp 		  #'(lambda (op cat cp) cat))
           (cat --> cat slash sm cat	  #'(lambda (cat1 slash mode cat2) (list (list 'in cat2) (list 'slash (list (list 'dir (expand-slash slash)) (list 'mode (expand-mode mode)))) (list 'out cat1))))
           (fstr --> ob feat f cb          #'(lambda (ob feat f cb) (cons feat f)))
           (fstr -->         		  #'(lambda () nil))
           (f -->          		  #'(lambda () nil))
           (f --> feat f       	          #'(lambda (feat f) (cons feat f)))
           (feat --> fname eq feat         #'(lambda (fname eq feat) (list (cadr fname) (cadr feat))))
+          (feat --> fc fname              #'(lambda (fc fname) (list (cadr fname) 'fcancel)))
           (feat --> fval      	          #'(lambda (fval) (list 'fabv (cadr fval))))) 
         )
 
@@ -227,43 +230,46 @@
 (defun expand-base-category (cat)
   (labels ((feature-abrv-p (feat)
              (equal (car feat) 'fabv))
+
+           (feature-canceller-p (feat)
+             (equal (cadr feat) 'fcancel)
+             )
+
            (lookup-feature-name (fvalue)
              (let ((val  (rassoc fvalue (*state* :feature-dictionary) :test #'member)))
                (if val
                    (car val)
                    (error (format nil "ERROR: Feature value ~a is unknown." fvalue)))))
+
            (expand-feature (feat)
-             (if (feature-abrv-p feat)
-                 (let ((feat (cadr feat)))
-                   (list (lookup-feature-name feat) feat))
-                 (let* ((name (car feat))
-                        (value (cadr feat))
-                        (value-valid? (member value (assoc
-                                                      name
-                                                      (*state*
-                                                        :feature-dictionary)))))
-                   (if value-valid?
-                       feat
-                       (error (format nil "ERROR: ~a is an invalid value for ~a." value name))))))
-           (update-cat-with-feature (cat feat)
-             (let ((exists-at (position (car feat) cat :key #'car)))
-               (if exists-at
-                   (progn
-                     (setf (nth exists-at cat) feat)
-                     cat)
-                   cat)))
-           (expand-cat (cat features)
-             (if (endp features)
-                 cat
+             (cond ((feature-abrv-p feat)
+                    (let ((feat (cadr feat)))
+                      (list (lookup-feature-name feat) feat)))
+                   ((feature-canceller-p feat)
+                    (list (car feat) (gensym "?")))
+                   (t (let* ((name (car feat))
+                             (value (cadr feat))
+                             (value-valid? (member value (assoc
+                                                           name
+                                                           (*state*
+                                                             :feature-dictionary)))))
+                        (if value-valid?
+                            feat
+                            (error (format nil "ERROR: ~a is an invalid value for ~a." value name)))))))
+
+           (expand-cat (cat-features overriding-features)
+             (if (endp overriding-features)
+                 cat-features
                  (expand-cat
-                   (update-cat-with-feature cat (car features))
-                   (cdr features)))))
-    (let ((cat-features (cdr (assoc (car cat) (*state* :category-bundle-symbols))))
-          (add-features (cdr cat)))
-      (expand-cat (copy-list (*state* :base-cat-template)) (append cat-features
-                                                                   (mapcar
-                                                                     #'expand-feature
-                                                                     add-features))))))
+                   (fs-update cat-features (car overriding-features))
+                   (cdr overriding-features)))))
+
+    (let ((cat-features (cdr (assoc (car cat) (*state* :category-bundles))))
+          (overriding-features (cdr cat)))
+      (expand-cat cat-features (mapcar
+                                 #'expand-feature
+                                 overriding-features)))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;       Main drive       ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -315,7 +321,7 @@
         (push (list y 'fval) syn-lexicon))
       (push (list (car x) 'fname) syn-lexicon))
     "then add *category-bundle-symbols* as acat items to the syn-lexicon"
-    (dolist (x (*state* :category-bundle-symbols))
+    (dolist (x (copy-alist (*state* :category-bundles)))
       (push (list (car x) 'acat) syn-lexicon))
     (let ((store nil))
       (with-open-file (debug-stream (*state* :debug-lexicon-path) :direction :output)

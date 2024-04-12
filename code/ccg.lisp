@@ -40,9 +40,9 @@
 (defmacro lexicon (&body body)
   `(funcall (*state* :lexicon) ,@body))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;    (Syntactic) Categories    ;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;    Feature Structures    ;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;; A category is a feature structure in
 ;;; the form of an alist, you can think
@@ -55,27 +55,46 @@
 
 ;;; Accessor functions for feature structures
 
-(defun search-syn (fs &rest path)
+(defun fs-search (fs &rest path)
   "Search a feature structure along the path
 
-   (search-syn '((A B) (K ((C ((D E)))))) 'K 'C 'D ) ==> E
+   (fs-search '((A B) (K ((C ((D E)))))) 'K 'C 'D ) ==> E
 
    "
-  (labels ((s-syn (fs path)
+  (labels ((_fs-search (fs path)
              (cond ((endp path) fs)
                    ((atom fs)
                     (if path nil fs))
                    ((feature-structure-p fs)
                     (let ((match (assoc (car path) fs)))
                       (when match
-                        (s-syn (cadr match) (cdr path)))))))
+                        (_fs-search (cadr match) (cdr path)))))))
            (feature-structure-p (fs)
              "A superficial checker for feature structures"
              (and (consp fs) (consp (car fs))))
            (attr-val-pair-p (exp)
              (and (consp exp) (= 2 (length exp)))))
-    (s-syn fs path)))
+    (_fs-search fs path)))
 
+(defun fs-empty-p (fs)
+  (endp fs))
+
+(defun fs-value-p (fs)
+  (atom fs))
+
+(defun fs-same-attr-p (attrvalA attrvalB)
+  (eql (car attrvalA) (car attrvalB)))
+
+(defun fs-same-attrval-p (attrvalA attrvalB)
+  (equalp attrvalA attrvalB))
+
+(defun fs-update (fs attrval)
+  "a top-level updater"
+  (cond ((fs-empty-p fs) (list attrval))
+        ((fs-same-attr-p (car fs) attrval) 
+         (cons attrval (cdr fs)))
+        (t (cons (car fs) (fs-update (cdr fs) attrval)))
+        ))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;         Combinators          ;;;;
@@ -138,19 +157,19 @@
   "combine sign-syn's  with application, if possible
    return (sign-syn direction combinator) or NIL"
   (or
-    (and (eq 'forward (search-syn lsyn 'slash 'dir))
+    (and (eq 'forward (fs-search lsyn 'slash 'dir))
          (let ((result (_apply lsyn rsyn)))
            (when result
              (list result '> 'a))))
-    (and (eq 'backward  (search-syn rsyn 'slash 'dir))
+    (and (eq 'backward  (fs-search rsyn 'slash 'dir))
          (let ((result (_apply rsyn lsyn)))
            (when result
              (list result '< 'a))))))
 
 (defun _apply (func arg)
-  (multiple-value-bind (bindings yes) (unifier:tree-match (search-syn func 'in) arg)
+  (multiple-value-bind (bindings yes) (unifier:tree-match (fs-search func 'in) arg)
 	(if yes
-	  (sublis bindings (search-syn func 'out)))))
+	  (sublis bindings (fs-search func 'out)))))
 
 ;;; Composition
 
@@ -158,27 +177,27 @@
   "combine sign-syn's  with composition, if possible
    return (sign-syn direction combinator) or NIL"
   (or
-    (and (eql 'forward (search-syn lsyn 'slash 'dir))
-         (eql 'dot (search-syn lsyn 'slash 'mode)) ; TODO implement modal hierarchy
+    (and (eql 'forward (fs-search lsyn 'slash 'dir))
+         (eql 'dot (fs-search lsyn 'slash 'mode)) ; TODO implement modal hierarchy
          (let ((result (_compose lsyn rsyn)))
            (if result
                (list result '> 'b))))
-    (and (eql 'backward (search-syn rsyn 'slash 'dir))
-         (eql 'dot (search-syn rsyn 'slash 'mode))
+    (and (eql 'backward (fs-search rsyn 'slash 'dir))
+         (eql 'dot (fs-search rsyn 'slash 'mode))
          (let ((result (_compose rsyn lsyn)))
            (if result
                (list result '< 'b))))))
 
 (defun _compose (f g)
   "combine the cats with composition, if possible"
-  (multiple-value-bind (bindings yes) (unifier:tree-match (search-syn f 'in) (search-syn g 'out))
+  (multiple-value-bind (bindings yes) (unifier:tree-match (fs-search f 'in) (fs-search g 'out))
     (if yes
         (list
           (cons 'in
-                (list (sublis bindings (search-syn g 'in))))
-          (list 'slash (list (list 'dir (search-syn g 'slash 'dir)) (list 'mode (search-syn g 'slash 'mode))))
+                (list (sublis bindings (fs-search g 'in))))
+          (list 'slash (list (list 'dir (fs-search g 'slash 'dir)) (list 'mode (fs-search g 'slash 'mode))))
           (cons 'out
-                (list (sublis bindings (search-syn f 'out))))))))
+                (list (sublis bindings (fs-search f 'out))))))))
 
 ;;; Semantic composition
 
