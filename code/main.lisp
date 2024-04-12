@@ -102,15 +102,19 @@
     (progn
       (mapc
         #'(lambda (item)
-            (format t "~%--------------------PARSE ~D--------------------~%" (car item))
-            (format t "~A~%" (caadr item))
-            (format t "~%~A~%" (pretty-print :type :sem :format :text :form (sign-sem (caadr item))))
-            (format t "~%~A~%" (pretty-print :type :sem :format :tex :form (sign-sem (caadr item))))
-            (format t "~%------------------------------------------------~%")
-            (when (*state* :derivation) 
-              (format t "~%--------------------DERIV ~D--------------------~%" (car item))
-              (format t "~A~%" (cadr item))
-              (format t "~%------------------------------------------------~%")))
+            (let ((index (car item))
+                  (result (caadr item))
+                  (derivation (cdadr item)))
+
+              (format t "~%--------------------PARSE ~D--------------------~%" index)
+              (format t "~A~%" (caadr item))
+              (format t "~%~A~%" (pretty-print :type :sign :format :text :form result))
+              (format t "~%------------------------------------------------~%")
+              (when (*state* :derivation) 
+                (format t "~%--------------------DERIV ~D--------------------~%" (car item))
+                (format t "~A~%" (aux:maptree #'(lambda (x) (pretty-print :type :sign :format :text :form x)) derivation))
+                (format t "~%------------------------------------------------~%"))))
+
         (aux:enum
           (funcall
             (if (*state* :uniq-parses)

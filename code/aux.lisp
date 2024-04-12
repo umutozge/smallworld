@@ -35,6 +35,7 @@
            :readlist
            :prompt
            :write-string-to-file
+           :maptree
            :tree2avm
            :tree2qtree
            :cartesian-product
@@ -129,9 +130,13 @@
                          "(" (read-line) ")"))))
 
 
-
-
-
+(defun maptree (func tree)
+  "recursively substitute each terminal term of tree with (func term)"
+  (labels ((_maptree (tree)
+             (cond ((null tree) nil)
+                   ((consp tree) (cons (_maptree (car tree)) (_maptree (cdr tree))))
+                   ((atom tree) (funcall func tree)))))
+    (_maptree tree)))
 
 
 (defun prompt (&rest args)
