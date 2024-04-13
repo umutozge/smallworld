@@ -193,9 +193,11 @@
 
 
 (defparameter syn-grammar
-        '((cat --> acat fstr 		  #'(lambda (acat fs) (expand-base-category (cons (cadr acat) fs))))
-          (cat --> cat oper cat	          #'(lambda (cat1 oper cat2) (list (list 'in cat2) oper (list 'out cat1))))
-          (cat --> op cat cp 		  #'(lambda (op cat cp) cat))
+        '(
+          (expr --> expr oper term	  #'(lambda (cat1 oper cat2) (list (list 'in cat2) oper (list 'out cat1))))
+          (expr --> term	          #'(lambda (cat) cat))
+          (term --> acat fstr 		  #'(lambda (acat fstr) (expand-base-category (cons (cadr acat) fstr))))
+          (term --> op expr cp 		  #'(lambda (op cat cp) cat))
           (oper --> slash mode            #'(lambda (slash mode) (list 'slash (list (list 'dir (expand-slash slash)) mode))))
           (mode --> sm                    #'(lambda (mode) (list 'mode (expand-mode mode))))
           (mode -->                       #'(lambda () (list 'mode 'dot)))

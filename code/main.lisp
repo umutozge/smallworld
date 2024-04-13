@@ -104,10 +104,10 @@
         #'(lambda (item)
             (let ((index (car item))
                   (result (caadr item))
-                  (derivation (cdadr item)))
+                  (derivation (cadr item)))
 
               (format t "~%--------------------PARSE ~D--------------------~%" index)
-              (format t "~A~%" (caadr item))
+              (if (*state* :debug-mode) (format t "~A~%" (caadr item)))
               (format t "~%~A~%" (pretty-print :type :sign :format :text :form result))
               (format t "~%------------------------------------------------~%")
               (when (*state* :derivation) 
@@ -127,7 +127,8 @@
       "")))
 
 (defun toggle-flag (flag)
-  (*state* flag (not (*state* flag))))
+  (format nil "~A is ~A" flag (let ((state (*state* flag (not (*state* flag)))))
+                                (if state 'on 'off))))
 
 (defun command-line ()
   (or

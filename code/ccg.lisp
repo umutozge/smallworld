@@ -314,7 +314,8 @@
           (sr-parser:parse (list (cons nil x)) #'combine))
       (with-debug
         (enumerate expression)
-        :message "Enumerations:"))))
+        :message "Enumerations:"
+        :transform #'(lambda (enumerations) (aux:maptree #'(lambda (x) (pretty-print :type :sign :format :text :form x)) enumerations))))))
 
 ;;; An equality predicate for semantic interpretations
 
