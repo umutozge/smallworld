@@ -194,13 +194,15 @@
 
 (defparameter syn-grammar
         '((cat --> acat fstr 		  #'(lambda (acat fs) (expand-base-category (cons (cadr acat) fs))))
-          (cat --> cat slash cat	  #'(lambda (cat1 slash cat2) (list (list 'in cat2) (list 'slash (list (list 'dir (expand-slash slash)) (list 'mode 'dot))) (list 'out cat1))))
+          (cat --> cat oper cat	          #'(lambda (cat1 oper cat2) (list (list 'in cat2) oper (list 'out cat1))))
           (cat --> op cat cp 		  #'(lambda (op cat cp) cat))
-          (cat --> cat slash sm cat	  #'(lambda (cat1 slash mode cat2) (list (list 'in cat2) (list 'slash (list (list 'dir (expand-slash slash)) (list 'mode (expand-mode mode)))) (list 'out cat1))))
+          (oper --> slash mode            #'(lambda (slash mode) (list 'slash (list (list 'dir (expand-slash slash)) mode))))
+          (mode --> sm                    #'(lambda (mode) (list 'mode (expand-mode mode))))
+          (mode -->                       #'(lambda () (list 'mode 'dot)))
           (fstr --> ob feat f cb          #'(lambda (ob feat f cb) (cons feat f)))
           (fstr -->         		  #'(lambda () nil))
-          (f -->          		  #'(lambda () nil))
           (f --> feat f       	          #'(lambda (feat f) (cons feat f)))
+          (f -->          		  #'(lambda () nil))
           (feat --> fname eq feat         #'(lambda (fname eq feat) (list (cadr fname) (cadr feat))))
           (feat --> fc fname              #'(lambda (fc fname) (list (cadr fname) 'fcancel)))
           (feat --> fval      	          #'(lambda (fval) (list 'fabv (cadr fval))))) 
