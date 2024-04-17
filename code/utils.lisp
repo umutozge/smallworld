@@ -12,7 +12,7 @@
      val))
 
 (defun pretty-print (&key form type format)
-  (let ((*logical-constants* '(cond and or))
+  (let ((*logical-constants* '(cond and or equal))
         (*operators* '(lam forall exists))) 
     (labels 
       ((parse (form)
@@ -74,6 +74,7 @@
                           ("neg"    . ,(concatenate 'string " " (string #\U223C) " "))
                           ("or"     . ,(concatenate 'string " " (string #\U2228) " "))
                           ("cond"   . ,(concatenate 'string " " (string #\U2283) " "))
+                          ("equal"  . ,(concatenate 'string " " (string #\=) " "))
                           ("lam"    . ,(string #\U1D6CC)))
                         ))
              (mapcar
@@ -100,6 +101,7 @@
                                     ("neg"    . "\\neg")
                                     ("or"     . "\\lor")
                                     ("cond"   . "\\rightarrow")
+                                    ("equal"   . "=")
                                     ("lam"    . "\\lambda"))
                                   ))
                        (mapcar

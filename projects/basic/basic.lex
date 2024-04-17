@@ -45,7 +45,7 @@ the
 }
 
 def existential () {
-(s/(s\np[sg]))/n[sg];
+(s/(s\np))/n;
 \p\qEx. p x & q x;
 
 some 

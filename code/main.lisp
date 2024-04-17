@@ -143,8 +143,9 @@
   (multiple-value-bind (options args)
     (opts:get-opts)
     (*state* :morphology (getf options :morphology))
-    (*state* :project-path (merge-pathnames (if args
-                                                (let ((cl-pathname (pathname (car args))))
+    (*state* :project-path (merge-pathnames (let ((cl-pathname (if args
+                                                                   (pathname (car args))
+                                                                   (sb-posix:getcwd))))
                                                   (if (null (pathname-name cl-pathname))
                                                       cl-pathname 
                                                       (make-pathname
@@ -152,8 +153,7 @@
                                                         :directory (append
                                                                      (or (pathname-directory cl-pathname)
                                                                          (list :relative))
-                                                                     (list (pathname-name cl-pathname))))))
-                                                (sb-posix:getcwd)))))
+                                                                     (list (pathname-name cl-pathname)))))))))
   (*state* :eta-normalize t)
   (*state* :debug-mode nil)
   (*state* :derivation nil)
