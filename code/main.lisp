@@ -6,6 +6,7 @@
 (ql:quickload :str :silent t)
 (ql:quickload :cl-ppcre :silent t)
 (ql:quickload :unix-opts :silent t)
+(ql:quickload :cl-lex :silent t)
 (rename-package "CL-PPCRE" "CL-PPCRE" '("PPCRE" "RE"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -166,7 +167,7 @@
 
   (if (*state* :morphology) (setup-morph-analyzer (*state* :prompt)))
 
-  (*state* :debug-lexicon-path (make-pathname :name "_lexicon" :type ".lisp" :directory (pathname-directory (*state* :project-path))))
+  (*state* :debug-lexicon-path (make-pathname :name "_lexicon" :type "lisp" :directory (pathname-directory (*state* :project-path))))
   (if (probe-file (*state* :debug-lexicon-path))
       (delete-file (*state* :debug-lexicon-path)))
 

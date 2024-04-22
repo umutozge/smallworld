@@ -22,6 +22,7 @@
       (,(intern "LALR-PARSER" parser-package-name)
          #'next-input #'parse-error))))
 
+
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;;;   Sem Parsing   ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;
@@ -175,10 +176,31 @@
                     (#\\ 'BS)
                     (#\= 'EQ)
                     (#\* 'SM) ;slash modality
-                    (#\! 'FC) ;feature canceller
                     (#\+ '+)
                     (#\- '-))
                   store)))))))
+
+(cl-lex:define-string-lexer syn-lex
+  ("\\("       (return (values 'op $@)))
+  ("\\)"       (return (values 'cp $@)))
+  ("\\["       (return (values 'ob $@)))
+  ("\\]"       (return (values 'cb $@)))
+  ("\\\\"      (return (values 'bs $@)))
+  ("\\w+"      (return (values (intern (string-upcase $@)) $@)))
+  ("="         (return (values 'eq $@)))
+  ("/"         (return (values 'fs $@)))
+  ("[*]"       (return (values 'sm $@)))
+  ("\\?[xyz]+" (return (values (intern (string-upcase $@)) $@)))
+  )
+
+(defun syn-lexer (input)
+ (let ((lexer (syn-lex input))
+       (store nil))
+   (do ((token (multiple-value-list (funcall lexer)) (multiple-value-list (funcall lexer)))) 
+       ((null (car token)) (reverse (mapcar #'car store)))
+       (push token store))))
+
+
 
 
 (defparameter syn-lexicon '((ob ob)
@@ -189,7 +211,9 @@
                             (fs slash)
                             (bs slash)
                             (sm sm)
-                            (fc fc)
+                            (?x var)
+                            (?y var)
+                            (?z var)
                             ($ $)
                             ))
 
@@ -208,9 +232,11 @@
           (f --> feat f       	          #'(lambda (feat f) (cons feat f)))
           (f -->          		  #'(lambda () nil))
           (feat --> fname eq feat         #'(lambda (fname eq feat) (list (cadr fname) (cadr feat))))
-          (feat --> fc fname              #'(lambda (fc fname) (list (cadr fname) 'fcancel)))
-          (feat --> fval      	          #'(lambda (fval) (list 'fabv (cadr fval))))) 
+          (feat --> var      	          #'(lambda (var) var))
+          (feat --> fval      	          #'(lambda (fval) (list 'fabv (cadr fval))))
+          ) 
         )
+        
 
 (defparameter syn-lexforms
   '(acat ob cb op cp slash sm eq fname fval))
@@ -247,6 +273,12 @@
                    (car val)
                    (error (format nil "ERROR: Feature value ~a is unknown." fvalue)))))
 
+           (valid-value? (fname fvalue)
+             (or (char= #\? (aref (symbol-name fvalue) 0))
+                 (member value (assoc
+                                 fname
+                                 (*state*
+                                   :feature-dictionary)))))
            (expand-feature (feat)
              (cond ((feature-abrv-p feat)
                     (let ((feat (cadr feat)))
@@ -254,12 +286,8 @@
                    ((feature-canceller-p feat)
                     (list (car feat) (gensym "?")))
                    (t (let* ((name (car feat))
-                             (value (cadr feat))
-                             (value-valid? (member value (assoc
-                                                           name
-                                                           (*state*
-                                                             :feature-dictionary)))))
-                        (if value-valid?
+                             (value (cadr feat)))
+                        (if (valid-value? name value)
                             feat
                             (error (format nil "ERROR: ~a is an invalid value for ~a." value name)))))))
 
@@ -270,7 +298,7 @@
                    (fs-update cat-features (car overriding-features))
                    (cdr overriding-features)))))
 
-    (let ((cat-features (cdr (assoc (car cat) (*state* :category-bundles))))
+    (let ((cat-features (unifier:refresh-vars (cdr (assoc (car cat) (*state* :category-bundles)))))
           (overriding-features (cdr cat)))
       (expand-cat cat-features (mapcar
                                  #'expand-feature
@@ -316,7 +344,7 @@
                      (list
                        key
                        (if (*state* :morphology) cat '_)
-                       (lalr-parse (syn-tokenizer syn) with :syn-parser)
+                       (print (lalr-parse (print (syn-lexer syn)) with :syn-parser))
                        (lalr-parse (sem-tokenizer sem) with :sem-parser)
                        (aux:string-to-list tokens))
                        ))
