@@ -22,7 +22,6 @@
       (,(intern "LALR-PARSER" parser-package-name)
          #'next-input #'parse-error))))
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;;;   Sem Parsing   ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;
@@ -140,45 +139,6 @@
 ;;;;      Syn Parsing       ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun syn-tokenizer (cat)
-  "tokenize the category given as string"
-  (let ((store nil)
-        (word-buffer (make-string 100))
-        (pos 0))
-    (do ((index 0 (+ index 1)))
-        ((= index (length cat))
-         (remove-if #'null
-                    (reverse
-                      (if (zerop pos)
-                          store
-                          (cons (intern (string-upcase (subseq word-buffer 0 pos))) store)))))
-        (let ((current-char (char cat index)))
-          (if (or (alpha-char-p current-char) (digit-char-p current-char))
-              (progn
-                (setf (aref word-buffer pos) current-char)
-                (incf pos))
-              (progn
-                (if (not (zerop pos))
-                    (let* ((word (string-upcase (subseq word-buffer 0 pos)))
-                           (int? (parse-integer word :junk-allowed t)))
-                      (push
-                        (or int?
-                            (intern word))
-                        store)
-                      (setf pos 0)))
-                (push
-                  (case current-char
-                    (#\( 'OP)
-                    (#\) 'CP)
-                    (#\[ 'OB)
-                    (#\] 'CB)
-                    (#\/ 'FS)
-                    (#\\ 'BS)
-                    (#\= 'EQ)
-                    (#\* 'SM) ;slash modality
-                    (#\+ '+)
-                    (#\- '-))
-                  store)))))))
 
 (cl-lex:define-string-lexer syn-lex
   ("\\("       (return (values 'op $@)))
@@ -186,6 +146,7 @@
   ("\\["       (return (values 'ob $@)))
   ("\\]"       (return (values 'cb $@)))
   ("\\\\"      (return (values 'bs $@)))
+  ("\\d"       (return (values (parse-integer $@) $@)))
   ("\\w+"      (return (values (intern (string-upcase $@)) $@)))
   ("="         (return (values 'eq $@)))
   ("/"         (return (values 'fs $@)))
@@ -199,9 +160,6 @@
    (do ((token (multiple-value-list (funcall lexer)) (multiple-value-list (funcall lexer)))) 
        ((null (car token)) (reverse (mapcar #'car store)))
        (push token store))))
-
-
-
 
 (defparameter syn-lexicon '((ob ob)
                             (cb cb)
@@ -234,9 +192,9 @@
           (feat --> fname eq feat         #'(lambda (fname eq feat) (list (cadr fname) (cadr feat))))
           (feat --> var      	          #'(lambda (var) var))
           (feat --> fval      	          #'(lambda (fval) (list 'fabv (cadr fval))))
-          ) 
+          )
         )
-        
+
 
 (defparameter syn-lexforms
   '(acat ob cb op cp slash sm eq fname fval))
@@ -264,8 +222,7 @@
              (equal (car feat) 'fabv))
 
            (feature-canceller-p (feat)
-             (equal (cadr feat) 'fcancel)
-             )
+             (equal (cadr feat) 'fcancel))
 
            (lookup-feature-name (fvalue)
              (let ((val  (rassoc fvalue (*state* :feature-dictionary) :test #'member)))
@@ -275,10 +232,11 @@
 
            (valid-value? (fname fvalue)
              (or (char= #\? (aref (symbol-name fvalue) 0))
-                 (member value (assoc
+                 (member fvalue (assoc
                                  fname
                                  (*state*
                                    :feature-dictionary)))))
+
            (expand-feature (feat)
              (cond ((feature-abrv-p feat)
                     (let ((feat (cadr feat)))
@@ -309,6 +267,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun read-lexicon ()
+
   (labels ((read-entries (content)
              (let ((outer-scanner (re:create-scanner "def\\s+[^{]+\\s*{[^}]+}"))
                    (inner-scanner (re:create-scanner "def\\s+([^{( ]+)\\s*[(]([^)]*)[)][ \\t\\n]*{[ \\t\\n]*(.+)[ \\t\\n]*;[ \\t\\n]*([^}]+)[ \\t\\n]*;[ \\t\\n]*([^}]*)}")))
@@ -340,23 +299,31 @@
                #'(lambda (entry)
                    (destructuring-bind
                      (key cat syn sem tokens)
-                     entry 
+                     entry
                      (list
                        key
                        (if (*state* :morphology) cat '_)
-                       (print (lalr-parse (print (syn-lexer syn)) with :syn-parser))
+                       (lalr-parse (syn-lexer syn) with :syn-parser)
                        (lalr-parse (sem-tokenizer sem) with :sem-parser)
                        (aux:string-to-list tokens))
                        ))
                (read-entries (aux:read-file-as-string (*state* :lexicon-path))))))
-    "then add items to the syn-lexicon on the basis of *feature-dictionary*"
+
+    "add items to the syn-lexicon on the basis of *feature-dictionary*"
     (dolist (x (*state* :feature-dictionary))
       (dolist (y (cdr x))
-        (push (list y 'fval) syn-lexicon))
+        (push (list
+                (if (integerp y)
+                    y;(intern (string (digit-char y)))
+                    y)
+                'fval)
+              syn-lexicon))
       (push (list (car x) 'fname) syn-lexicon))
     "then add *category-bundle-symbols* as acat items to the syn-lexicon"
     (dolist (x (copy-alist (*state* :category-bundles)))
       (push (list (car x) 'acat) syn-lexicon))
+
+    "now open the lex file and parse it"
     (let ((store nil))
       (with-open-file (debug-stream (*state* :debug-lexicon-path) :direction :output)
         (dolist (entry (generate-entry-list))

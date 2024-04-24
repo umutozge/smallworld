@@ -59,13 +59,19 @@
                             (parse (first form))
                             parse-of-rest))))))   
 
+       (finisher (text)
+         (let ((patterns '(("\\( " "(")
+                           (" \\)" ")"))))
+           (do ((current text (re:regex-replace-all (caar pats) current (cadar pats)))
+                (pats patterns (cdr pats)))
+               ((null pats) current))))
        
        (variable-p (form)
          (and (symbolp form) (char= (char (symbol-name form) 0) #\?)))
        
        (sem-to-text (form)
          "lf to text printer"
-         (apply
+         (finisher (apply
            #'concatenate
            'string
            (let ((table `(("forall" . ,(string #\U2200))
@@ -84,11 +90,11 @@
                            ((or (string= x "'") (string= x ".")) x)
                            ((= 1 (length x)) (concatenate 'string x " "))
                            ((and (= 3 (length x)) (char= (aref x 1) #\_))
-                            (concatenate 'string x " "))
+                            (concatenate 'string x ""))
                            (t x))))
                (remove-if
                          #'(lambda (x) (string= x " "))
-                         (sb-unicode:words (parse form)))))))
+                         (sb-unicode:words (parse form))))))))
 
        (sem-to-tex (form)
                    "lf to tex printer"
@@ -113,6 +119,7 @@
                          (remove-if
                                    #'(lambda (x) (string= x "A"))
                                    (sb-unicode:words (parse form)))))))
+
        (syn-to-text (form)
                     (labels ((functor-p (form)
                                (and (= (length form) 3) (assoc 'in form)))
@@ -139,7 +146,7 @@
                                                            #'variable-p 
                                                            (mapcar
                                                              #'cadr
-                                                             (set-difference (cdr x) form))))
+                                                             (set-difference (cdr x) form :test #'equalp))))
                                                      (*state* :category-bundles))))
 
                                  (format nil "~A~A"
@@ -153,7 +160,8 @@
 
                              (print-atom (form)
                                (format nil "~A" (find-bundle form))))
-                     
+
+                      ;BODY
                       (cond ((functor-p form)
                               (format nil "(~A~A~A)"
                                       (syn-to-text (second (assoc 'out form)))

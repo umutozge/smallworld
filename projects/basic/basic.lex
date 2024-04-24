@@ -7,6 +7,7 @@ john
 mary
 }
 
+
 def sg-intransitives () {
 s\np[sg];
 \x.lex' x;
