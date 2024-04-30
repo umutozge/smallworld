@@ -2,7 +2,7 @@ SmallWorld sample lexicon
 -------------------------
 
 def proper-names () {
-s/(s[bar=?x]\np[bar=?x]); \p.p lex';
+s/(s\np[sg]); \p.p lex';
 john
 mary
 }

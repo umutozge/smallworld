@@ -143,14 +143,14 @@
                                    ""
                                    (format nil "[~{~a~^,~}]" (mapcar #'cadr feature-list))))
                              (find-bundle (form)
-                               (let ((bundle (print (find-if
+                               (let ((bundle (find-if
                                                      #'(lambda (x)
                                                          (every 
                                                            #'variable-p 
-                                                           (print (mapcar
+                                                           (mapcar
                                                              #'cadr
-                                                             (set-difference (cdr (print x)) (print form) :test #'equalp)))))
-                                                     (*state* :category-bundles)))))
+                                                             (set-difference (cdr x) form :test #'equalp))))
+                                                     (*state* :category-bundles))))
 
                                  (format nil "~A~A"
                                          (car bundle)
