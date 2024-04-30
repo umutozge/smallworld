@@ -1,15 +1,9 @@
 #!/usr/bin/env -S sbcl --script
 
-#-quicklisp
-(let ((quicklisp-init (merge-pathnames "quicklisp/setup.lisp"
-                                       (user-homedir-pathname))))
-  (when (probe-file quicklisp-init)
-    (load quicklisp-init)))
+
+(load (merge-pathnames ".sbclrc" (user-homedir-pathname)))
 
 (ql:quickload :uiop :silent t)
-
-
-
 
 (format t "~%Installing SmallWorld...~%~%")
 
@@ -34,7 +28,9 @@
     ("Lisp version:" ,(uiop:lisp-version-string))
     ("User dir:" ,(uiop:getenv "HOME"))
     ("Current dir:" ,*current-dir*)
-    ("Install dir:" ,*install-dir*)))
+    ("Install dir:" ,*install-dir*)
+    ("SBCL init file" ,(sb-impl::userinit-pathname)))
+  )
 
 
 (setf *default-pathname-defaults* (uiop:merge-pathnames*

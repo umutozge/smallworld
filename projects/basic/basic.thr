@@ -18,7 +18,7 @@
 ;;; of features.
 ;;;
 
-(category-bundles (s (cat v) (bar 1))
+(category-bundles (s (cat v))
 		  (np (cat n) (bar 1))
                   (n (cat n) (bar 0))
 		 )

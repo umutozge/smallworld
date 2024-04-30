@@ -37,7 +37,18 @@ sbcl --version
 on the command-line to see if you have a working `SBCL`.
 
 
-Install `quicklisp` as described [here](https://www.quicklisp.org/beta/), make sure to complete all the steps.
+Install `quicklisp` as described [here](https://www.quicklisp.org/beta/), make sure to complete the following steps.
+After downloading `quicklisp`:
+
+```lisp
+(quicklisp-quickstart:install)
+```
+
+then 
+
+```lisp
+(ql:add-to-init-file)
+```
 
 
 #### Fetch the program to your system

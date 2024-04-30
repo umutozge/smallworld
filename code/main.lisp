@@ -201,4 +201,6 @@
   (loop
     (format t "~a> " (*state* :prompt))
     (finish-output)
-    (proc-input (read))))
+    (proc-input (handler-case (read)
+                  (sb-int:simple-reader-error (e)
+                              'read-error)))))
