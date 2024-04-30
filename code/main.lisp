@@ -1,4 +1,4 @@
-(declaim (optimize (speed 0) (safety 3) (debug 3)))
+;(declaim (optimize (speed 0) (safety 3) (debug 3)))
 ;(declaim (sb-ext:muffle-conditions cl:warning))
 
 (load "~/.sbclrc")
