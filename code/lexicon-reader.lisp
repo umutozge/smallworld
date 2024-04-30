@@ -5,7 +5,7 @@
 ;;;
 ;;; Input format:
 ;;;
-;;; def <cat-name> {s\np; \x.lex'x; dog cat}:   
+;;; def <cat-name> {s\np; \x.lex'x; dog cat}:
 ;;;
 
 (defmacro lalr-parse (words with parser-package-name)
@@ -231,11 +231,15 @@
                    (error (format nil "ERROR: Feature value ~a is unknown." fvalue)))))
 
            (valid-value? (fname fvalue)
-             (or (char= #\? (aref (symbol-name fvalue) 0))
-                 (member fvalue (assoc
-                                 fname
-                                 (*state*
-                                   :feature-dictionary)))))
+             (or
+               (member fvalue (assoc
+                                fname
+                                (*state*
+                                  :feature-dictionary)))
+               (handler-case
+                 (char= #\? (aref (symbol-name fvalue) 0))
+                 (type-error (e)
+                             (values nil e)))))
 
            (expand-feature (feat)
              (cond ((feature-abrv-p feat)

@@ -1,4 +1,4 @@
-
+;;;
 ;;; SmallWorld
 ;;; 
 ;;; utilities
@@ -61,7 +61,10 @@
 
        (finisher (text)
          (let ((patterns '(("\\( " "(")
-                           (" \\)" ")"))))
+                           (" \\)" ")")
+                           ("^\\(" " ")
+                           ("\\)$" " ")
+                           )))
            (do ((current text (re:regex-replace-all (caar pats) current (cadar pats)))
                 (pats patterns (cdr pats)))
                ((null pats) current))))
@@ -140,14 +143,14 @@
                                    ""
                                    (format nil "[~{~a~^,~}]" (mapcar #'cadr feature-list))))
                              (find-bundle (form)
-                               (let ((bundle (find-if
+                               (let ((bundle (print (find-if
                                                      #'(lambda (x)
                                                          (every 
                                                            #'variable-p 
-                                                           (mapcar
+                                                           (print (mapcar
                                                              #'cadr
-                                                             (set-difference (cdr x) form :test #'equalp))))
-                                                     (*state* :category-bundles))))
+                                                             (set-difference (cdr (print x)) (print form) :test #'equalp)))))
+                                                     (*state* :category-bundles)))))
 
                                  (format nil "~A~A"
                                          (car bundle)
@@ -173,7 +176,7 @@
        (sign-to-text (sign)
                      (string-downcase (format nil "[~A = ~A : ~A]"
                                               (sign-phon sign)
-                                              (syn-to-text (sign-syn sign))
+                                              (finisher (syn-to-text (sign-syn sign)))
                                               (sem-to-text (sign-sem sign))))))
       
         (funcall 
