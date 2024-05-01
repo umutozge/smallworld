@@ -35,7 +35,7 @@
 (mapc
   (lambda (name)
     (load (str:concat name ".lisp")))
-  '("aux" "utils" "unifier" "lc-q"  "sr-parser" "syn-parser" "sem-parser" "lexicon-reader" "ccg" "flookup"))
+  '("service" "utils" "unifier" "lc-q"  "sr-parser" "syn-parser" "sem-parser" "lexicon-reader" "ccg" "flookup"))
 
 (defun proc-input (input)
   (case input
