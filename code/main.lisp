@@ -1,7 +1,7 @@
 ;(declaim (optimize (speed 0) (safety 3) (debug 3)))
 ;(declaim (sb-ext:muffle-conditions cl:warning))
 
-(load "~/.sbclrc")
+(load (merge-pathnames ".sbclrc" (user-homedir-pathname)))
 (ql:quickload :uiop :silent t)
 (ql:quickload :str :silent t)
 (ql:quickload :cl-ppcre :silent t)
@@ -35,7 +35,7 @@
 (mapc
   (lambda (name)
     (load (str:concat name ".lisp")))
-  '("service" "utils" "unifier" "lc-q"  "sr-parser" "syn-parser" "sem-parser" "lexicon-reader" "ccg" "flookup"))
+  '("service" "utils" "unifier" "lc-q" "sr-parser" "syn-parser" "sem-parser" "lexicon-reader" "ccg" "flookup" "conditions"))
 
 (defun proc-input (input)
   (case input
@@ -44,17 +44,17 @@
     ((:quit :q) (princ "bye, come again!") (terpri) (quit))
     ((:show-vocab :sv)
      (format t "~{~{~10A~^ ~}~%~}" (aux:partition (mapcar
-                                                      #'(lambda (x)
-                                                          (format nil "~a (~a)" (first x) (second x)))
-                                                      (sort
-                                                        (mapcar
-                                                          #'(lambda (lexkey)
-                                                              (list (lexkey-phon lexkey) (lexkey-cat lexkey)))
-                                                          (*state* 'vocab))
-                                                        #'string<
-                                                        :key #'(lambda (x) (symbol-name (second x)))
-                                                        ))
-                                                 8))
+                                                    #'(lambda (x)
+                                                        (format nil "~a (~a)" (first x) (second x)))
+                                                    (sort
+                                                      (mapcar
+                                                        #'(lambda (lexkey)
+                                                            (list (lexkey-phon lexkey) (lexkey-cat lexkey)))
+                                                        (*state* 'vocab))
+                                                      #'string<
+                                                      :key #'(lambda (x) (symbol-name (second x)))
+                                                      ))
+                                                  8))
      (terpri))
     ((:switch-eta :se)
      (princ (toggle-flag :eta-normalization)) (terpri))
@@ -111,7 +111,7 @@
               (if (*state* :debug-mode) (format t "~A~%" (caadr item)))
               (format t "~%~A~%" (pretty-print :type :sign :format :text :form result))
               (format t "~%------------------------------------------------~%")
-              (when (*state* :derivation) 
+              (when (*state* :derivation)
                 (format t "~%--------------------DERIV ~D--------------------~%" (car item))
                 (format t "~A~%" (aux:maptree #'(lambda (x) (pretty-print :type :sign :format :text :form x)) derivation))
                 (format t "~%------------------------------------------------~%"))))
@@ -175,19 +175,7 @@
   (*state* :theory-path (make-pathname :name (*state* :prompt) :type "thr" :directory (pathname-directory (*state* :project-path))))
   (*state* :theory (aux:read-from-file (*state* :theory-path)))
   (*state* :features                (cdr (assoc 'features (*state* :theory))))
-  (*state* :category-bundles (let ((bundles (cdr (assoc 'category-bundles (copy-alist (*state* :theory)))))
-                                   (default-features (*state* :features)))
-                               (mapcar
-                                 #'(lambda (bundle)
-                                     (let* ((bundle-features (cdr bundle))
-                                            (missing-features (remove-if
-                                                                        #'(lambda (feature)
-                                                                            (member feature bundle-features :key #'car))
-                                                                        default-features)))
-
-                                       (append bundle (mapcar #'(lambda (x) (list x (gensym "?"))) missing-features))))
-                                 bundles)))
-
+  (*state* :category-bundles (cdr (assoc 'category-bundles (*state* :theory))))
   (*state* :feature-dictionary      (cdr  (assoc 'feature-dictionary (*state* :theory))))
   (run-program "/usr/bin/clear" nil :output *standard-output*)
   (format t "Welcome to SmallWorld~%~%A linguists' parser based on CCG~%~%Type :help for help, :quit for quit.~%")

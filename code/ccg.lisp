@@ -286,19 +286,19 @@
             (mapcar
               #'generate-enums
               (with-debug (aux:cartesian-product
-                                   (mapcar 
+                                   (mapcar
                                      #'morph-parse
                                      input))
                           :message "Morph parses:"
                           :transform #'(lambda (parse-list)
                                          (mapcar
                                            #'(lambda (parse)
-                                               (mapcar 
+                                               (mapcar
                                                  #'(lambda (lexkey)
                                                      (list (lexkey-phon lexkey) (lexkey-cat lexkey)))
                                                  parse))
                                            parse-list)))))
-          (generate-enums  
+          (generate-enums
             (mapcar
               #'(lambda (x)
                   (make-lexkey :phon x))
@@ -333,9 +333,9 @@
 
 (defun load-lexicon ()
   "Loads lexical items fetched by read-lexicon to aux:multi-set-table pointed to by (*state* :lexicon).
-   
+
    Keys to the lexicon are (pos phon)"
-  
+
   (labels ((push-item (item)
              "item is an alist: (key pos phon syn sem)"
              (let* ((sign (construct-sign item))
@@ -351,8 +351,12 @@
           (items
             (handler-case (read-lexicon)
               (SB-KERNEL::ARG-COUNT-ERROR (e)
-                                          (format t "~%~%~A***BROKEN LEXICON, REVISE and :RELOAD.***~%~%" #\Tab )
-                                          ))
+                                          (format t "~%~%~A***BROKEN LEXICON, REVISE and :RELOAD.***~%~%" #\Tab ))
+              (INVALID-FEATURE-VALUE (e)
+                                     (format t "~%~%LEXICON ERROR: ~A is an invalid value for the feature ~A, revise and :reload.~%" (value e) (feature e)))
+              (DEFAULT-FEATURE-OVERRIDE (e)
+                                     (format t "~%~%LEXICON ERROR: ~A attempts to override the default ~A, revise and :reload.~%" (overrider e) (default e)))
+              )
             (cdr items)))
         ((endp items) (progn (lexicon :keys) count))
         (push-item (car items)))))

@@ -245,26 +245,27 @@
              (cond ((feature-abrv-p feat)
                     (let ((feat (cadr feat)))
                       (list (lookup-feature-name feat) feat)))
-                   ((feature-canceller-p feat)
-                    (list (car feat) (gensym "?")))
                    (t (let* ((name (car feat))
                              (value (cadr feat)))
                         (if (valid-value? name value)
                             feat
-                            (error (format nil "ERROR: ~a is an invalid value for ~a." value name)))))))
+                            (error (make-condition 'invalid-feature-value :feature name :value value)))))))
 
-           (expand-cat (cat-features overriding-features)
-             (if (endp overriding-features)
-                 cat-features
-                 (expand-cat
-                   (fs-update cat-features (car overriding-features))
-                   (cdr overriding-features)))))
+           (expand-cat (default-features defined-features)
+             (do ((x defined-features (cdr x))
+                  (y default-features (if (not (assoc (caar x) y))
+                                          (cons (car x) y)
+                                          (error
+                                            (make-condition 'default-feature-override
+                                                            :default y
+                                                            :overrider (car x))))))
+                 ((endp x) y))))
 
-    (let ((cat-features (unifier:refresh-vars (cdr (assoc (car cat) (*state* :category-bundles)))))
-          (overriding-features (cdr cat)))
-      (expand-cat cat-features (mapcar
+    (let ((default-features (unifier:refresh-vars (cdr (assoc (car cat) (*state* :category-bundles)))))
+          (defined-features (cdr cat)))
+      (expand-cat default-features (mapcar
                                  #'expand-feature
-                                 overriding-features)))))
+                                 defined-features)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;       Main drive       ;;;
