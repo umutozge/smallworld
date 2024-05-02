@@ -38,11 +38,11 @@
   '("service" "utils" "unifier" "lc-q" "sr-parser" "syn-parser" "sem-parser" "lexicon-reader" "ccg" "flookup" "conditions"))
 
 (defun proc-input (input)
-  (case input
+  (case (car input)
     ((:help :h)
      (display-help))
     ((:quit :q) (princ "bye, come again!") (terpri) (quit))
-    ((:show-vocab :sv)
+    ((:list-vocab :ls)
      (format t "~{~{~10A~^ ~}~%~}" (aux:partition (mapcar
                                                     #'(lambda (x)
                                                         (format nil "~a (~a)" (first x) (second x)))
@@ -65,11 +65,12 @@
     ((:switch-uniq :su)
      (princ (toggle-flag :uniq-parses)) (terpri))
     ((:parse :p)
-     (terpri) (princ (parse-expr)) (terpri) (terpri))
-    ;((:parse-file :pf)
-    ; (parse-file) (terpri))
+       (display-parses (parse-expression (cdr input))))
+   ; ((:parse-file :pf)
+   ;   (parse-file) (terpri))
     ((:reload :rl) (main))
-    (otherwise (princ "unknown command") (terpri))))
+    (otherwise (cond ((keywordp (car input)) (princ "unknown command") (terpri))
+                     (t (display-parses (parse-expression input)) (terpri))))))
 
 (defun display-help ()
   (let ((data '((":parse (:p) <expression>" "parse the provided expression")
@@ -85,47 +86,59 @@
   (format t "~{~{~24A~^ -- ~} ~%~}" data)
   (format t "~%")))
 
+
 ;(defun parse-file (&optional fname)
-;  (let* ((filename (or fname (read-line)))
-;         (sentences (aux:tsv-to-list
-;                      (make-pathname :name filename)))
-;         (outpath (aux:string-to-pathname filename ".out")))
+;  (let* ((inpath (merge-pathnames (or fname (read-line))))
+;         (outpath (merge-pathnames (make-pathname :name (pathname-name inpath) :type "out")))
+;         "read the sentences into a list of lists"
+;         (sentences (with-open-file (str inpath :direction :input)
+;                      (reverse
+;                        (mapcar
+;                          #'(lambda (string)
+;                              (read-from-string (str:concat "(" string ")")))
+;                          (do  ((sentence (read-line str nil nil) (read-line str nil nil))
+;                                (store nil (cons sentence store)))
+;                               ((null sentence) store))))))
+;         )
 ;    (with-open-file (str outpath :direction :output
 ;                         :if-does-not-exist :create
 ;                         :if-exists :overwrite)
 ;      (dolist (i sentences)
 ;        (format str (string-downcase "~{~A ~}~%~{~A~%~}~%~%")
 ;                i
-;                (mapcar sign-sem (uniq-parses (parse-expr i)))))))) ; TODO can't display ambiguity
+;                (mapcar sign-sem (uniq-parses (parse-expr i)))))))) 
 
-(defun parse-expr (&optional expr)
-  (let* ((expression (or expr (aux:string-to-list (read-line)))))
-    (progn
-      (mapc
-        #'(lambda (item)
-            (let ((index (car item))
-                  (result (caadr item))
-                  (derivation (cadr item)))
 
-              (format t "~%--------------------PARSE ~D--------------------~%" index)
-              (if (*state* :debug-mode) (format t "~A~%" (caadr item)))
-              (format t "~%~A~%" (pretty-print :type :sign :format :text :form result))
-              (format t "~%------------------------------------------------~%")
-              (when (*state* :derivation)
-                (format t "~%--------------------DERIV ~D--------------------~%" (car item))
-                (format t "~A~%" (aux:maptree #'(lambda (x) (pretty-print :type :sign :format :text :form x)) derivation))
-                (format t "~%------------------------------------------------~%"))))
+(defun display-parses (parses &optional (str t))
+  (mapc
+    #'(lambda (item)
+        (let ((index (car item))
+              (result (caadr item))
+              (derivation (cadr item)))
 
-        (aux:enum
-          (funcall
-            (if (*state* :uniq-parses)
-                #'uniq-parses
-                #'identity)
-            (handler-case (parse expression)
-              (simple-error (e)
-                            (format t "~A" e))))
-          1))
-      "")))
+          (format str "~%--------------------PARSE ~D--------------------~%" index)
+          (if (*state* :debug-mode) (format t "~A~%" (caadr item)))
+          (format str "~%~A~%" (pretty-print :type :sign :format :text :form result))
+          (format str "~%------------------------------------------------~%")
+          (when (*state* :derivation)
+            (format str "~%--------------------DERIV ~D--------------------~%" (car item))
+            (format str "~A~%" (aux:maptree #'(lambda (x) (pretty-print :type :sign :format :text :form x)) derivation))
+            (format str "~%------------------------------------------------~%"))))
+    parses))
+
+(defun parse-expression (expression)
+  "return a numeration of parse
+   ((index result derivation)...(index result derivation))"
+  (aux:enum
+    (funcall
+      (if (*state* :uniq-parses)
+          #'uniq-parses
+          #'identity)
+      (handler-case (parse expression)
+        (simple-error (e)
+                      (format t "~A" e))))
+    1))
+
 
 (defun toggle-flag (flag)
   (format nil "~A is ~A" flag (let ((state (*state* flag (not (*state* flag)))))
@@ -189,6 +202,6 @@
   (loop
     (format t "~a> " (*state* :prompt))
     (finish-output)
-    (proc-input (handler-case (read)
+    (proc-input (handler-case (read-from-string (str:concat "("(read-line) ")"))
                   (sb-int:simple-reader-error (e)
                               'read-error)))))
