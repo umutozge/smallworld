@@ -246,7 +246,11 @@
                  enums
                  (generate-enums
                    (cdr sentence)
-                   (let ((entries (lexicon (car sentence))))
+                   (let ((entries (handler-case (lexicon (car sentence))
+                                    (SIMPLE-ERROR (e)
+                                                  (error
+                                                    (make-condition 'item-not-found :lexkey (car sentence))))
+                                    )))
                      (mapcan
                        #'(lambda (x)
                            (mapcar

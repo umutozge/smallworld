@@ -8,8 +8,13 @@
 
 (define-condition invalid-feature-value (error)
   ((feature :initarg :feature
-            :initform 'aloha 
+            :initform nil 
             :reader feature)
    (value :initarg :value
-              :initform 'aloha 
+              :initform nil 
               :reader value)))
+
+(define-condition item-not-found (error)
+  ((lexkey :initarg :lexkey
+            :initform nil 
+            :reader lexkey)))

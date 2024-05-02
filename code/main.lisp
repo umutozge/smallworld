@@ -66,8 +66,8 @@
      (princ (toggle-flag :uniq-parses)) (terpri))
     ((:parse :p)
        (display-parses (parse-expression (cdr input))))
-   ; ((:parse-file :pf)
-   ;   (parse-file) (terpri))
+    ((:parse-file :pf)
+      (parse-file (cadr input)) (terpri))
     ((:reload :rl) (main))
     (otherwise (cond ((keywordp (car input)) (princ "unknown command") (terpri))
                      (t (display-parses (parse-expression input)) (terpri))))))
@@ -87,44 +87,52 @@
   (format t "~%")))
 
 
-;(defun parse-file (&optional fname)
-;  (let* ((inpath (merge-pathnames (or fname (read-line))))
-;         (outpath (merge-pathnames (make-pathname :name (pathname-name inpath) :type "out")))
-;         "read the sentences into a list of lists"
-;         (sentences (with-open-file (str inpath :direction :input)
-;                      (reverse
-;                        (mapcar
-;                          #'(lambda (string)
-;                              (read-from-string (str:concat "(" string ")")))
-;                          (do  ((sentence (read-line str nil nil) (read-line str nil nil))
-;                                (store nil (cons sentence store)))
-;                               ((null sentence) store))))))
-;         )
-;    (with-open-file (str outpath :direction :output
-;                         :if-does-not-exist :create
-;                         :if-exists :overwrite)
-;      (dolist (i sentences)
-;        (format str (string-downcase "~{~A ~}~%~{~A~%~}~%~%")
-;                i
-;                (mapcar sign-sem (uniq-parses (parse-expr i)))))))) 
+(defun parse-file (filename)
+  (let* ((inpath (merge-pathnames (string-downcase filename)))
+         (outpath (make-pathname :name (pathname-name inpath) :directory (pathname-directory inpath) :type "out"))
+         (sentences (handler-case (with-open-file (str inpath :direction :input :if-does-not-exist :error)
+                                    (reverse
+                                      (mapcar
+                                        #'(lambda (string)
+                                            (read-from-string (str:concat "(" string ")")))
+                                        (do  ((sentence (read-line str nil nil) (read-line str nil nil))
+                                              (store nil (cons sentence store)))
+                                             ((null sentence) store)))))
+                      (FILE-DOES-NOT-EXIST (err)
+                                           (format t "~%The file ~A cannot be found.~%Check path and make sure to avoid capital letters and spaces in your filenames.~%" (namestring inpath))))))
+    (with-open-file (str outpath :direction :output
+                         :if-does-not-exist :create
+                         :if-exists :overwrite)
+      (dolist (i sentences)
+        (display-parses (parse-expression i) str))
+      (format t "~%Output written to ~A.~%" (namestring outpath))
+      )))
 
 
 (defun display-parses (parses &optional (str t))
-  (mapc
-    #'(lambda (item)
-        (let ((index (car item))
-              (result (caadr item))
-              (derivation (cadr item)))
+  (if parses
+      (mapc
+        #'(lambda (item)
+            (typecase (cadr item)
+              (string (format str "~%~A~%" (cadr item))) ; ERROR 
+              (list (let ((index (car item))
+                          (result (caadr item))
+                          (derivation (cadr item)))
 
-          (format str "~%--------------------PARSE ~D--------------------~%" index)
-          (if (*state* :debug-mode) (format t "~A~%" (caadr item)))
-          (format str "~%~A~%" (pretty-print :type :sign :format :text :form result))
-          (format str "~%------------------------------------------------~%")
-          (when (*state* :derivation)
-            (format str "~%--------------------DERIV ~D--------------------~%" (car item))
-            (format str "~A~%" (aux:maptree #'(lambda (x) (pretty-print :type :sign :format :text :form x)) derivation))
-            (format str "~%------------------------------------------------~%"))))
-    parses))
+                      (format str "~%--------------------PARSE ~D--------------------~%" index)
+                      (if (*state* :debug-mode) (format t "~A~%" (caadr item)))
+                      (format str "~%~A~%" (pretty-print :type :sign :format :text :form result))
+                      (format str "~%------------------------------------------------~%")
+                      (when (*state* :derivation)
+                        (format str "~%--------------------DERIV ~D--------------------~%" (car item))
+                        (format str "~A~%" (aux:maptree #'(lambda (x) (pretty-print :type :sign :format :text :form x)) derivation))
+                        (format str "~%------------------------------------------------~%"))))))
+        parses
+        )
+      
+        (format str "~%No parses.~%") ; FAILURE
+      
+      ))
 
 (defun parse-expression (expression)
   "return a numeration of parse
@@ -135,8 +143,8 @@
           #'uniq-parses
           #'identity)
       (handler-case (parse expression)
-        (simple-error (e)
-                      (format t "~A" e))))
+        (ITEM-NOT-FOUND (e)
+                      (list (format nil "~A(~A) is not in your lexicon." (lexkey-phon (lexkey e)) (lexkey-cat (lexkey e)))))))
     1))
 
 
