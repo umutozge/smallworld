@@ -280,7 +280,7 @@
       (expand-cat (mapcar
                     #'expand-feature
                     defined-features)
-                  (expand-cat default-features (*state* :category-template))
+                  (expand-cat default-features (unifier:refresh-vars (*state* :category-template)))
                   ))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
