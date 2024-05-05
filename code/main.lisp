@@ -35,14 +35,14 @@
 (mapc
   (lambda (name)
     (load (str:concat name ".lisp")))
-  '("service" "utils" "unifier" "lc-q" "sr-parser" "syn-parser" "sem-parser" "lexicon-reader" "ccg" "flookup" "conditions"))
+  '("service" "conditions" "utils" "unifier" "lc-q" "sr-parser" "syn-parser" "sem-parser" "lexicon-reader" "ccg" "flookup"))
 
 (defun proc-input (input)
   (case (car input)
     ((:help :h)
      (display-help))
     ((:quit :q) (princ "bye, come again!") (terpri) (quit))
-    ((:list-vocab :ls)
+    ((:show-vocab :sv :ls)
      (format t "~{~{~10A~^ ~}~%~}" (aux:partition (mapcar
                                                     #'(lambda (x)
                                                         (format nil "~a (~a)" (first x) (second x)))
@@ -196,6 +196,7 @@
   (*state* :theory-path (make-pathname :name (*state* :prompt) :type "thr" :directory (pathname-directory (*state* :project-path))))
   (*state* :theory (aux:read-from-file (*state* :theory-path)))
   (*state* :features                (cdr (assoc 'features (*state* :theory))))
+  (*state* :category-template       (mapcar #'(lambda (x) (list x (gensym "?"))) (*state* :features)))
   (*state* :category-bundles (cdr (assoc 'category-bundles (*state* :theory))))
   (*state* :feature-dictionary      (cdr  (assoc 'feature-dictionary (*state* :theory))))
   (run-program "/usr/bin/clear" nil :output *standard-output*)

@@ -39,6 +39,7 @@
            :tree2avm
            :tree2qtree
            :cartesian-product
+           :update-alist
            ))
 
 (in-package aux)
@@ -91,6 +92,13 @@
                                    (funcall comparator (car lst) x))
                                (cdr lst))
                     comparator))))
+
+(defun update-alist (key val alist)
+  (if (endp alist)
+      (list (list key val))
+      (if (equal key (caar alist))
+          (cons (list key val) (cdr alist))
+          (cons (car alist) (update-alist key val (cdr alist))))))
 
 (defun tsv-to-list (path)
   "convert a tab-separated value file to a list"

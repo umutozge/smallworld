@@ -221,14 +221,28 @@
   (labels ((feature-abrv-p (feat)
              (equal (car feat) 'fabv))
 
+           (variable-p (sym)
+             (char= #\? (aref (symbol-name sym) 0)))
+
            (feature-canceller-p (feat)
              (equal (cadr feat) 'fcancel))
+
+           (update-fs (fs keyval)
+             (let ((feature (car keyval))
+                   (value (cadr keyval)))
+               (cond ((endp fs) (list keyval))
+                     ((equal feature (caar fs)) (if (not (variable-p (cadar fs)))
+                                                    (error (make-condition 'default-feature-override
+                                                                           :default feature
+                                                                           :overrider value))
+                                                    (cons keyval (cdr fs))))
+                     (t (cons (car fs) (update-fs (cdr fs) keyval))))))
 
            (lookup-feature-name (fvalue)
              (let ((val  (rassoc fvalue (*state* :feature-dictionary) :test #'member)))
                (if val
                    (car val)
-                   (error (format nil "ERROR: Feature value ~a is unknown." fvalue)))))
+                   (error (make-condition 'invalid-feature-value :feature 'abbrv :value fvalue)))))
 
            (valid-value? (fname fvalue)
              (or
@@ -249,23 +263,25 @@
                              (value (cadr feat)))
                         (if (valid-value? name value)
                             feat
-                            (error (make-condition 'invalid-feature-value :feature name :value value)))))))
+                            (error
+                              (make-condition 'invalid-feature-value
+                                              :feature name
+                                              :value value)))))))
 
-           (expand-cat (default-features defined-features)
-             (do ((x defined-features (cdr x))
-                  (y default-features (if (not (assoc (caar x) y))
-                                          (cons (car x) y)
-                                          (error
-                                            (make-condition 'default-feature-override
-                                                            :default y
-                                                            :overrider (car x))))))
-                 ((endp x) y))))
+           (expand-cat (defined-features default-features)
+             (reduce
+               #'update-fs
+               defined-features
+               :initial-value default-features
+               )))
 
     (let ((default-features (unifier:refresh-vars (cdr (assoc (car cat) (*state* :category-bundles)))))
           (defined-features (cdr cat)))
-      (expand-cat default-features (mapcar
-                                 #'expand-feature
-                                 defined-features)))))
+      (expand-cat (mapcar
+                    #'expand-feature
+                    defined-features)
+                  (expand-cat default-features (*state* :category-template))
+                  ))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;       Main drive       ;;;
