@@ -1,39 +1,27 @@
 ;;;
-;;; Theory definition
+;;; SmallWorld sample theory definition
 ;;;
 
-
-;;; 
-;;; Specify the set of features. 
-;;; 
-;;; Every syntactic type must implement these features,
+;;;
+;;; Specify the set of features and their possible values.
+;;;
+;;; Every basic syntactic type implements these features,
 ;;; either as a value or as a variable
-;;; 
+;;;
+;;; WARNING: feature values must be unique to a feature name.
+;;; WARNING: feature names and atomic feature values must be alphanumeric or one of {+,-}.
+;;;
 
-(features cat agr bar)
+(feature-dictionary (agr pl sg)
+                    (cat v n)
+                    (bar 0 1 2))
 
 ;;;
 ;;; Provide the category bundle symbols (ccg category symbols) with their
-;;; meanings. Their meanings are the features they will override in the set 
-;;; of features.
+;;; meanings. Their meanings are the features they will specify.
 ;;;
 
 (category-bundles (s (cat v))
 		  (np (cat n) (bar 1))
                   (n (cat n) (bar 0))
 		 )
-
-;;;
-;;; Provide a feature dictionary (feature val ...)
-;;;
-;;; WARNING: feature values must be unique to a feature name.
-;;; WARNING: feature names and atomic feature values must be alphanumeric.
-;;;
-;;;
-;;; The first element is the feature name and the rest are the possible values
-;;; for this feature.
-;;;
-
-(feature-dictionary (agr pl sg)
-                    (cat v n a p m)
-                    (bar 0 1 2))

@@ -182,7 +182,12 @@
   (*state* :uniq-parses nil)
   (*state* :lexicon (aux:multiset-table))
 
-  (uiop:chdir (*state* :project-path))
+  (handler-case (uiop:chdir (*state* :project-path))
+    (SB-POSIX:SYSCALL-ERROR (err)
+                            (format t "~%Cannot find ~A~%~%" (*state* :project-path))
+                            (sb-ext:quit)
+                            )
+    )
 
   (*state* :prompt (car (last (pathname-directory (*state* :project-path)))))
 
