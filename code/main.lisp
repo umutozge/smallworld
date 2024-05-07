@@ -65,12 +65,12 @@
     ((:switch-uniq :su)
      (princ (toggle-flag :uniq-parses)) (terpri))
     ((:parse :p)
-       (display-parses (parse-expression (cdr input))))
+       (let ((expression (cdr input))) (display-parses expression (parse-expression expression))) (terpri))
     ((:parse-file :pf)
       (parse-file (cadr input)) (terpri))
     ((:reload :rl) (main))
     (otherwise (cond ((keywordp (car input)) (princ "unknown command") (terpri))
-                     (t (display-parses (parse-expression input)) (terpri))))))
+                     (t (display-parses input (parse-expression input)) (terpri))))))
 
 (defun display-help ()
   (let ((data '((":parse (:p) <expression>" "parse the provided expression")
@@ -104,12 +104,12 @@
                          :if-does-not-exist :create
                          :if-exists :overwrite)
       (dolist (i sentences)
-        (display-parses (parse-expression i) str))
+        (display-parses i (parse-expression i) str))
       (format t "~%Output written to ~A.~%" (namestring outpath))
       )))
 
 
-(defun display-parses (parses &optional (str t))
+(defun display-parses (input-expression parses &optional (str t))
   (if parses
       (mapc
         #'(lambda (item)
@@ -130,7 +130,7 @@
         parses
         )
       
-        (format str "~%No parses.~%") ; FAILURE
+        (format str "~%*~{~A~^ ~}~%" input-expression) ; FAILURE
       
       ))
 
