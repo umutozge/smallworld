@@ -201,7 +201,7 @@
   (*state* :theory-path (make-pathname :name (*state* :prompt) :type "thr" :directory (pathname-directory (*state* :project-path))))
   (*state* :theory (aux:read-from-file (*state* :theory-path)))
   (*state* :feature-dictionary      (cdr  (assoc 'feature-dictionary (*state* :theory))))
-  (*state* :features                (mapcar #'car (*state* :theory)))
+  (*state* :features                (mapcar #'car (*state* :feature-dictionary)))
   (*state* :category-template       (mapcar #'(lambda (x) (list x (gensym "?"))) (*state* :features)))
   (*state* :category-bundles (cdr (assoc 'category-bundles (*state* :theory))))
   (run-program "/usr/bin/clear" nil :output *standard-output*)
