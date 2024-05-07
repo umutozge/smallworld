@@ -148,6 +148,7 @@
   ("\\\\"      (return (values 'bs $@)))
   ("\\d"       (return (values (parse-integer $@) $@)))
   ("\\w+"      (return (values (intern (string-upcase $@)) $@)))
+  ("[+-]"      (return (values (intern (string-upcase $@)) $@)))
   ("="         (return (values 'eq $@)))
   ("/"         (return (values 'fs $@)))
   ("[*]"       (return (values 'sm $@)))
