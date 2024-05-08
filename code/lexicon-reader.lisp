@@ -325,8 +325,16 @@
                      (list
                        key
                        (if (*state* :morphology) cat '_)
-                       (lalr-parse (syn-lexer syn) with :syn-parser)
-                       (lalr-parse (sem-tokenizer sem) with :sem-parser)
+                       (let ((syn-cat (lalr-parse (syn-lexer syn) with :syn-parser)))
+                         (if (typep syn-cat 'string)
+                             (error (make-condition 'bad-syntactic-type
+                                                    :definition syn))
+                             syn-cat))
+                       (let ((sem-interp (lalr-parse (sem-tokenizer sem) with :sem-parser)))
+                         (if (typep sem-interp 'string)
+                             (error (make-condition 'bad-semantic-interpretation
+                                                    :definition sem))
+                             sem-interp))
                        (aux:string-to-list tokens))
                        ))
                (read-entries (aux:read-file-as-string (*state* :lexicon-path))))))
