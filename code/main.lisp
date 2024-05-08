@@ -134,9 +134,9 @@
                         (format str "~%------------------------------------------------~%"))))))
         parses
         )
-      
+
         (format str "~%*~{~A~^ ~}~%" input-expression) ; FAILURE
-      
+
       ))
 
 (defun parse-expression (expression)
@@ -181,10 +181,10 @@
                                                                      (or (pathname-directory cl-pathname)
                                                                          (list :relative))
                                                                      (list (pathname-name cl-pathname)))))))))
-  (*state* :eta-normalize t)
+  (*state* :eta-normalize nil)
   (*state* :debug-mode nil)
   (*state* :derivation nil)
-  (*state* :uniq-parses nil)
+  (*state* :uniq-parses t)
   (*state* :lexicon (aux:multiset-table))
 
   (handler-case (uiop:chdir (*state* :project-path))
