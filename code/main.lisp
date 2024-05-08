@@ -102,6 +102,9 @@
                                            (format t "~%The file ~A cannot be found.~%~%Check path and make sure to avoid capital letters and spaces in your filenames.~%" (namestring inpath))
                                            (return-from parse-file 0)
                                            ))))
+
+    (if (probe-file outpath) (delete-file outpath))
+
     (with-open-file (str outpath :direction :output
                          :if-does-not-exist :create
                          :if-exists :overwrite)
