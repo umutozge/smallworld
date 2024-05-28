@@ -26,7 +26,6 @@ def number (num) {np[sg]\np; \x.x; sg}
 Case:
 def case (case) {s/(s[+]\np[agr=?x])\np[agr=?x]; \x\p. p x ; nom}
 def case (case) {(s[fin=?x]\np)\(s[fin=?x]\np/np)\np; \x\v\y. v x y ; acc}
-def case (case) {(s[fin=?x]\np)\(s[fin=?x]\np/np)\np; \x\v\y. v x y ; acc}
 
 Determiners:
 def definite (d) {np[agr=?x]/n[agr=?x]; \x.lex' x ; the}
