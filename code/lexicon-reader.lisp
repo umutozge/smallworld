@@ -291,8 +291,8 @@
 (defun read-lexicon ()
 
   (labels ((read-entries (content)
-             (let ((outer-scanner (re:create-scanner "def\\s+[^{]+\\s*{[^}]+}"))
-                   (inner-scanner (re:create-scanner "def\\s+([^{( ]+)\\s*[(]([^)]*)[)][ \\t\\n]*{[ \\t\\n]*(.+)[ \\t\\n]*;[ \\t\\n]*([^}]+)[ \\t\\n]*;[ \\t\\n]*([^}]*)}")))
+             (let ((outer-scanner (re:create-scanner "[^!]def\\s+[^{]+\\s*{[^}]+}"))
+                   (inner-scanner (re:create-scanner "[^!]def\\s+([^{( ]+)\\s*[(]([^)]*)[)][ \\t\\n]*{[ \\t\\n]*(.+)[ \\t\\n]*;[ \\t\\n]*([^}]+)[ \\t\\n]*;[ \\t\\n]*([^}]*)}")))
                (mapcar
                  #'(lambda (entry)
                      (re:register-groups-bind

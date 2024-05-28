@@ -69,6 +69,7 @@
     ((:parse-file :pf)
       (parse-file (cadr input)) (terpri))
     ((:reload :rl) (main))
+    (read-error (princ "unknown command") (terpri))
     (otherwise (cond ((keywordp (car input)) (princ "unknown command") (terpri))
                      (t (display-parses input (parse-expression input)) (terpri))))))
 
@@ -174,7 +175,7 @@
                                                                    (pathname (car args))
                                                                    (sb-posix:getcwd))))
                                                   (if (null (pathname-name cl-pathname))
-                                                      cl-pathname 
+                                                      cl-pathname
                                                       (make-pathname
                                                        ; :defaults cl-pathname
                                                         :directory (append
@@ -222,5 +223,9 @@
     (format t "~a> " (*state* :prompt))
     (finish-output)
     (proc-input (handler-case (read-from-string (str:concat "("(read-line) ")"))
-                  (sb-int:simple-reader-error (e)
-                              'read-error)))))
+                  (SB-INT:SIMPLE-READER-ERROR (e)
+                              (list 'read-error))
+
+                  (END-OF-FILE (e)
+                              (list 'read-error))
+                  ))))
