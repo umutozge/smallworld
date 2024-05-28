@@ -1,0 +1,70 @@
+!Multichar_Symbols +n +pn +sg +pl +num +case +acc +nom +1 +%0 +agr +tense +past +pres
+
+LEXICON Root
+
+Noun ;
+PNoun ;
+Verb ;
+Det ;
+
+LEXICON Noun
+
+spy   NCat;
+cat   NCat;
+city  NCat;
+fox   NCat;
+panic NCat;
+try   NCat;
+watch NCat;
+
+LEXICON PNoun
+
+john PNCat;
+mary PNCat;
+
+LEXICON NCat
+
++n:0 NNum;
+
+LEXICON PNCat
+
++pn+sg+num:0 NCase;
+
+LEXICON NNum
++sg+num:0 NCase;
++pl+num:^s NCase;
+
+LEXICON NCase
+
++acc+case:0 #;
++nom+case:0 #;
+
+LEXICON Verb
+
+talk  VCat;
+walk  VCat;
+like  VCat;
+beg   VCat;
+make  VCat;
+panic VCat;
+try   VCat;
+watch VCat;
+
+LEXICON VCat
+
++v:0 VInf;
++v:0 #;
+
+LEXICON VInf
+
++%0+agr+pres+tense:0  #;
++1+agr+pres+tense:^s  #;
++%0+agr+past+tense:^ed #;
+
+LEXICON Det
+
+the   DCat;
+
+LEXICON DCat
+
++D:0 #;
