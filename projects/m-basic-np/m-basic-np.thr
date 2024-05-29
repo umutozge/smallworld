@@ -23,5 +23,6 @@
 ;;;
 
 (category-bundles (s (cat v))
-		  						(n (cat n)) 
+		  						(np (cat n) (bar 1))
+                  (n (cat n) (bar 0))
 		 )
