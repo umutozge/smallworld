@@ -28,3 +28,8 @@
   ((definition :initarg :definition
                :initform nil 
                :reader definition)))
+
+(define-condition no-morph-parse (error)
+  ((input :initarg :input
+               :initform nil 
+               :reader input)))

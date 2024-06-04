@@ -149,8 +149,10 @@
           #'uniq-parses
           #'identity)
       (handler-case (parse expression)
+        (NO-MORPH-PARSE (e)
+                        (list (format nil "No morph parse for ~A." (input e))))
         (ITEM-NOT-FOUND (e)
-                      (list (format nil "~A(~A) is not in your lexicon." (lexkey-phon (lexkey e)) (lexkey-cat (lexkey e)))))))
+                        (list (format nil "~A (~A) is not in your lexicon." (lexkey-phon (lexkey e)) (lexkey-cat (lexkey e)))))))
     1))
 
 

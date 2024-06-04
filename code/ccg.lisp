@@ -265,24 +265,34 @@
               Input: string
               Output: list of list of pairs
               "
-             (labels ((wrap-string-in-parentheses (str)
-                        (concatenate 'string "(" str ")"))
-                      (swap-pairs (list-of-pairs)
-                        (mapcar
-                          #'(lambda (pair)
-                              (make-lexkey :cat (second pair) :phon (first pair)))
-                          list-of-pairs)))
-               (mapcar
-                 #'(lambda (x)
-                     (swap-pairs
-                       (aux:partition
-                         (read-from-string
-                           (wrap-string-in-parentheses x))
-                         2))) 
-                 (typecase expression 
-                   (simple-base-string (flookup expression))
-                   (symbol (flookup (str:downcase (symbol-name expression))))))))
-           ) 
+             (let ((result (labels ((wrap-string-in-parentheses (str)
+                                      (concatenate 'string "(" str ")"))
+                                    (pairs-to-lexkeys (list-of-pairs)
+                                      (mapcar
+                                        #'(lambda (pair)
+                                            (make-lexkey :cat (second pair) :phon (first pair)))
+                                        list-of-pairs)))
+                             (mapcar
+                               #'(lambda (x)
+                                   (pairs-to-lexkeys
+                                     (aux:partition
+                                       (read-from-string
+                                         (wrap-string-in-parentheses x))
+                                       2))) 
+                               (typecase expression 
+                                 (simple-base-string (flookup expression))
+                                 (symbol (flookup (str:downcase (symbol-name expression)))))))))
+               (if (some
+                     #'(lambda (item)
+                         (some
+                           #'(lambda (lexkey)
+                               (equalp (lexkey-phon lexkey) '+?))
+                           item))
+                     result)
+                   (error (make-condition 'no-morph-parse :input expression)) 
+                   result)))
+           
+           )
 
       (if (*state* :morphology)
           (reduce
@@ -290,9 +300,7 @@
             (mapcar
               #'generate-enums
               (with-debug (aux:cartesian-product
-                                   (mapcar
-                                     #'morph-parse
-                                     input))
+                            (mapcar #'morph-parse input))
                           :message "Morph parses:"
                           :transform #'(lambda (parse-list)
                                          (mapcar
