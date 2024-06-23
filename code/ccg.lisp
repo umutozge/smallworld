@@ -179,10 +179,12 @@
   (or
     (and (eql 'forward (fs-search lsyn 'slash 'dir))
          (eql 'dot (fs-search lsyn 'slash 'mode)) ; TODO implement modal hierarchy
+         (eql 'dot (fs-search rsyn 'slash 'mode)) 
          (let ((result (_compose lsyn rsyn)))
            (if result
                (list result '> 'b))))
     (and (eql 'backward (fs-search rsyn 'slash 'dir))
+         (eql 'dot (fs-search lsyn 'slash 'mode))
          (eql 'dot (fs-search rsyn 'slash 'mode))
          (let ((result (_compose rsyn lsyn)))
            (if result

@@ -109,6 +109,7 @@
     (with-open-file (str outpath :direction :output
                          :if-does-not-exist :create
                          :if-exists :overwrite)
+      (format t "Parsing ~A.~% Abort with Ctrl-C.~%" outpath)
       (dolist (i sentences)
         (display-parses i (parse-expression i) str))
       (format t "~%Output written to ~A.~%" (namestring outpath))
@@ -199,7 +200,10 @@
 
   (*state* :prompt (car (last (pathname-directory (*state* :project-path)))))
 
-  (if (*state* :morphology) (setup-morph-analyzer (*state* :prompt)))
+  (if (*state* :morphology) (handler-case (setup-morph-analyzer (*state* :prompt))
+                              (MISSING-FST (e)
+                                           (format t "~%Cannot find the FST file '~A', aborting..~%~%" (file-name e))
+                                           (sb-ext:quit))))
 
   (*state* :debug-lexicon-path (make-pathname :name "_lexicon" :type "lisp" :directory (pathname-directory (*state* :project-path))))
   (if (probe-file (*state* :debug-lexicon-path))
@@ -224,10 +228,11 @@
   (loop
     (format t "~a> " (*state* :prompt))
     (finish-output)
-    (proc-input (handler-case (read-from-string (str:concat "("(read-line) ")"))
-                  (SB-INT:SIMPLE-READER-ERROR (e)
-                              (list 'read-error))
-
-                  (END-OF-FILE (e)
-                              (list 'read-error))
-                  ))))
+    (handler-case (proc-input (handler-case (read-from-string (str:concat "("(read-line) ")"))
+                                (SB-INT:SIMPLE-READER-ERROR (e)
+                                                            (list 'read-error))
+                                (END-OF-FILE (e)
+                                             (list 'read-error))))
+      (SB-SYS:INTERACTIVE-INTERRUPT (e)
+                                    (format t "~%User interrupt.~%~%"))
+      )))

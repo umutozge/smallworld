@@ -33,3 +33,8 @@
   ((input :initarg :input
                :initform nil 
                :reader input)))
+
+(define-condition missing-fst (error)
+  ((file-name :initarg :file-name
+               :initform nil 
+               :reader file-name)))
