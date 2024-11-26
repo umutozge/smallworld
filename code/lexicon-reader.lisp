@@ -152,6 +152,8 @@
   ("="         (return (values 'eq $@)))
   ("/"         (return (values 'fs $@)))
   ("[*]"       (return (values 'sm $@)))
+  ("[\\^]"       (return (values 'hm $@)))
+  ("[%]"       (return (values 'xm $@)))
   ("\\?[xyz]+" (return (values (intern (string-upcase $@)) $@)))
   )
 
@@ -170,6 +172,8 @@
                             (fs slash)
                             (bs slash)
                             (sm sm)
+                            (xm sm)
+                            (hm sm)
                             (?x var)
                             (?y var)
                             (?z var)
@@ -216,7 +220,10 @@
 
 (defun expand-mode (mode)
   (case (cadr mode)
-    (sm 'star)))
+    (sm 'star)
+    (xm 'cross)
+    (hm 'diamond)
+    ))
 
 (defun expand-base-category (cat)
   (labels ((feature-abrv-p (feat)
