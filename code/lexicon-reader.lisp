@@ -222,7 +222,7 @@
   (case (cadr mode)
     (sm 'star)
     (xm 'cross)
-    (hm 'diamond)
+    (hm 'harmonic)
     ))
 
 (defun expand-base-category (cat)
