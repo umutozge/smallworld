@@ -171,24 +171,45 @@
 	(if yes
 	  (sublis bindings (fs-search func 'out)))))
 
+;;; Mode check
+
+(defun modes-afforded (m1 m2)
+  (intersection 
+    (gethash m1 (*state* :mode-table))
+    (gethash m2 (*state* :mode-table))))
+
 ;;; Composition
 
 (defun c-compose (lsyn rsyn) ; TODO generalized composition
   "combine sign-syn's  with composition, if possible
    return (sign-syn direction combinator) or NIL"
-  (or
-    (and (eql 'forward (fs-search lsyn 'slash 'dir))
-         (eql 'dot (fs-search lsyn 'slash 'mode)) ; TODO implement modal hierarchy
-         (eql 'dot (fs-search rsyn 'slash 'mode)) 
-         (let ((result (_compose lsyn rsyn)))
-           (if result
-               (list result '> 'b))))
-    (and (eql 'backward (fs-search rsyn 'slash 'dir))
-         (eql 'dot (fs-search lsyn 'slash 'mode))
-         (eql 'dot (fs-search rsyn 'slash 'mode))
-         (let ((result (_compose rsyn lsyn)))
-           (if result
-               (list result '< 'b))))))
+  (let ((modes (apply #'modes-afforded (mapcar
+                                         #'(lambda (syn)
+                                             (fs-search syn 'slash 'mode))
+                                         (list lsyn rsyn)))))
+    (or
+      (and (eql 'forward (fs-search lsyn 'slash 'dir))
+           (or
+             (and
+               (eql 'forward (fs-search rsyn 'slash 'dir))
+               (member 'harmonic modes))
+             (and 
+               (eql 'backward (fs-search rsyn 'slash 'dir))
+               (member 'cross modes)))
+           (let ((result (_compose lsyn rsyn)))
+             (if result
+                 (list result '> 'b))))
+      (and (eql 'backward (fs-search rsyn 'slash 'dir))
+           (or
+             (and
+               (eql 'backward (fs-search lsyn 'slash 'dir))
+               (member 'harmonic modes))
+             (and 
+               (eql 'forward (fs-search lsyn 'slash 'dir))
+               (member 'cross modes)))
+           (let ((result (_compose rsyn lsyn)))
+             (if result
+                 (list result '< 'b)))))))
 
 (defun _compose (f g)
   "combine the cats with composition, if possible"

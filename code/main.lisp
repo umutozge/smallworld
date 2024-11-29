@@ -210,6 +210,11 @@
       (delete-file (*state* :debug-lexicon-path)))
 
   (*state* :lexicon-path (make-pathname :name (*state* :prompt) :type "lex" :directory  (pathname-directory (*state* :project-path))))
+  (*state* :mode-table (aux:list-to-hash-table
+                         '((star (star))
+                           (harmonic (harmonic star))
+                           (cross (cross star))
+                           (dot (harmonic cross star)))))
   (*state* :theory-path (make-pathname :name (*state* :prompt) :type "thr" :directory (pathname-directory (*state* :project-path))))
   (*state* :theory (aux:read-from-file (*state* :theory-path)))
   (*state* :feature-dictionary      (cdr  (assoc 'feature-dictionary (*state* :theory))))

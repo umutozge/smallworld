@@ -14,6 +14,7 @@
            :enum
            :string-to-list
            :csv-to-str-list
+           :list-to-hash-table
            :one-char-sym-p
            :shuffle-list
            :symbol=
@@ -303,7 +304,21 @@
 		 (store "" (concatenate 'string store (format nil "~A~%" line))))
 	  ((eq line :eof) store))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;
+;;                     ;;
+;; Hash Table Utils    ;;
+;;                     ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;
 
+
+(defun list-to-hash-table (lst)
+  "Form a hash table from key val pairs in lst"
+  (let ((table (make-hash-table)))
+    (mapc
+      #'(lambda (item)
+          (setf (gethash (car item) table) (cadr item)))
+      lst)
+    table))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;                     ;;
