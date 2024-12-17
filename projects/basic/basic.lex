@@ -13,8 +13,8 @@ s\np[pl]; \x.lex'x; talk walk
 def sg-transitives () {
 s\np[sg]/np; \x.lex'x; loves 
 }
-def pl-intransitives () {
-s\np[pl]/np; \x.lex'x; love 
+def pl-transitives () {
+s\np[pl]/np; \x\y.lex'x y; love 
 }
 def sg-nouns () {
 n[sg]; \x.lex'x; spy dog

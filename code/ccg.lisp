@@ -102,12 +102,54 @@
 
 ;;; see lc-quan.lisp for the notation for interpretations
 
+(defun a-combine (x y)
+  "application"
+  (beta-normalize-inner (mk-a x y)))
+
 (defparameter b-comb
   '(lam f (lam g (lam x (f (g x))))))
+
+(defun b-combine (x y &optional (n 1))
+  "return (B^n)xy"
+  (case n
+    (1 (beta-normalize-inner
+         (mk-a
+           (mk-a
+             '(lam f (lam g (lam x (f (g x)))))
+             x)
+           y)))
+    (2 (beta-normalize-inner
+         (mk-a
+           (mk-a
+             '(lam f (lam g (lam x (lam y (f ((g x) y))))))
+             x)
+           y)))
+    (3 (beta-normalize-inner
+         (mk-a
+           (mk-a
+             '(lam f (lam g (lam x (lam y (lam z (f (((g x) y) z)))))))
+             x)
+           y)))))
+
+
+
+(defparameter b-2-comb
+  '(lam f (lam g (lam x (lam y (f ((g x) y))))))
+  )
+
+(defparameter b-3-comb
+  '(lam f (lam g (lam x (lam y (lam z (f (((g x) y) z)))))))
+  )
 
 (defparameter t-comb
   '(lam x (lam y (y x))))
 
+(defun t-comb (x)
+  "return Tx"
+  (beta-reduce-inner
+    (mk-a
+      '(lam x (lam y (y x)))  
+      x)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;         Combination          ;;;;
@@ -180,7 +222,7 @@
 
 ;;; Composition
 
-(defun c-compose (lsyn rsyn) ; TODO generalized composition
+(defun c-compose (lsyn rsyn) ; TODO generalized composition (make order a parameter, perhaps?)
   "combine sign-syn's  with composition, if possible
    return (sign-syn direction combinator) or NIL"
   (let ((modes (apply #'modes-afforded (mapcar
@@ -230,19 +272,18 @@
              (let ((lsem (sign-sem left))
                    (rsem (sign-sem right)))
                (if (eq dir '>)
-                   (beta-normalize-inner (mk-a lsem rsem))
-                   (beta-normalize-inner (mk-a rsem lsem)))))
+                   (a-combine lsem rsem)
+                   (a-combine rsem lsem))))
            (s-compose (left right dir)
              "handle the semantic side of composition"
              (let ((lsem (sign-sem left))
                    (rsem (sign-sem right)))
                (if (eq dir '>)
-                   (beta-normalize-inner (mk-a (mk-a b-comb lsem) rsem))
-                   (beta-normalize-inner (mk-a (mk-a b-comb rsem) lsem))))))
+                   (b-combine lsem rsem)
+                   (b-combine rsem lsem)))))
     (case combinator
       (a (s-apply left right dir))
       (b (s-compose left right dir)))))
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;            Parsing           ;;;;
