@@ -241,7 +241,7 @@
                         #'concatenate 'string strings)))
 
 (defun read-from-file (name)
-  "return a list of lisp objects in the file at the pathname object
+  "return a list of forms in the file at the pathname object
    also accepts a string name, but then the path construction is relative"
   (with-open-file (str (typecase name
                          (string (make-pathname :name name ))

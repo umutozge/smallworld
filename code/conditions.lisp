@@ -34,7 +34,7 @@
                :initform nil 
                :reader input)))
 
-(define-condition missing-fst (error)
+(define-condition missing-morph-file (error)
   ((file-name :initarg :file-name
-               :initform nil 
-               :reader file-name)))
+              :initform nil 
+              :reader file-name)))

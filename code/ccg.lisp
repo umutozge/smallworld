@@ -329,23 +329,11 @@
               Input: string
               Output: list of list of pairs
               "
-             (let ((result (labels ((wrap-string-in-parentheses (str)
-                                      (concatenate 'string "(" str ")"))
-                                    (pairs-to-lexkeys (list-of-pairs)
-                                      (mapcar
-                                        #'(lambda (pair)
-                                            (make-lexkey :cat (second pair) :phon (first pair)))
-                                        list-of-pairs)))
-                             (mapcar
-                               #'(lambda (x)
-                                   (pairs-to-lexkeys
-                                     (aux:partition
-                                       (read-from-string
-                                         (wrap-string-in-parentheses x))
-                                       2))) 
-                               (typecase expression 
-                                 (simple-base-string (flookup expression))
-                                 (symbol (flookup (str:downcase (symbol-name expression)))))))))
+             (let ((result  (print (typecase expression 
+                              (simple-base-string
+                                (funcall (*state* :morph-analyzer) expression))
+                              (symbol
+                                (funcall (*state* :morph-analyzer) (str:downcase (symbol-name expression))))))))
                (if (some
                      #'(lambda (item)
                          (some
