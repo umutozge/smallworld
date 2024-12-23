@@ -329,11 +329,11 @@
               Input: string
               Output: list of list of pairs
               "
-             (let ((result  (print (typecase expression 
-                              (simple-base-string
-                                (funcall (*state* :morph-analyzer) expression))
-                              (symbol
-                                (funcall (*state* :morph-analyzer) (str:downcase (symbol-name expression))))))))
+             (let ((result (typecase expression 
+                             (simple-base-string
+                               (funcall (*state* :morph-analyzer) expression))
+                             (symbol
+                               (funcall (*state* :morph-analyzer) (str:downcase (symbol-name expression)))))))
                (if (some
                      #'(lambda (item)
                          (some
