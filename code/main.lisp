@@ -49,7 +49,7 @@
                                                     (sort
                                                       (mapcar
                                                         #'(lambda (lexkey)
-                                                            (list (lexkey-phon lexkey) (lexkey-cat lexkey)))
+                                                            (list (lexkey-phon lexkey) (lexkey-pos lexkey)))
                                                         (*state* 'vocab))
                                                       #'string<
                                                       :key #'(lambda (x) (symbol-name (second x)))
@@ -153,7 +153,7 @@
         (NO-MORPH-PARSE (e)
                         (list (format nil "No morph parse for ~A." (input e))))
         (ITEM-NOT-FOUND (e)
-                        (list (format nil "~A (~A) is not in your lexicon." (lexkey-phon (lexkey e)) (lexkey-cat (lexkey e)))))))
+                        (list (format nil "~A (~A) is not in your lexicon." (lexkey-phon (lexkey e)) (lexkey-pos (lexkey e)))))))
     1))
 
 

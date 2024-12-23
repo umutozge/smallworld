@@ -32,7 +32,7 @@
   sem)
 
 (defstruct lexkey
-   (cat '_   :type symbol)
+   (pos '_   :type symbol)
    (phon '_  :type (or symbol integer)))
 
 ;;; A way to talk to the lexicon closure
@@ -359,7 +359,7 @@
                                            #'(lambda (parse)
                                                (mapcar
                                                  #'(lambda (lexkey)
-                                                     (list (lexkey-phon lexkey) (lexkey-cat lexkey)))
+                                                     (list (lexkey-phon lexkey) (lexkey-pos lexkey)))
                                                  parse))
                                            parse-list)))))
           (generate-enums
@@ -403,9 +403,9 @@
   (labels ((push-item (item)
              "item is an alist: (key pos phon syn sem)"
              (let* ((sign (construct-sign item))
-                    (cat (cadr (assoc 'cat item)))
+                    (pos (cadr (assoc 'pos item)))
                     (phon (sign-phon sign)))
-               (lexicon (make-lexkey :cat cat :phon phon) sign)))
+               (lexicon (make-lexkey :pos pos :phon phon) sign)))
            (construct-sign (lex)
              (make-sign :phon (cadr (assoc 'phon lex))
                         :syn (unifier:refresh-vars (cadr (assoc 'syn lex)))

@@ -13,7 +13,7 @@
                     (pairs-to-lexkeys (list-of-pairs)
                       (mapcar
                         #'(lambda (pair)
-                            (make-lexkey :cat (second pair) :phon (first pair)))
+                            (make-lexkey :pos (second pair) :phon (first pair)))
                         list-of-pairs)))
 
                    (mapcar
