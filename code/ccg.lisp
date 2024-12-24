@@ -32,7 +32,7 @@
   sem)
 
 (defstruct lexkey
-   (cat '_   :type symbol)
+   (pos '_   :type symbol)
    (phon '_  :type (or symbol integer)))
 
 ;;; A way to talk to the lexicon closure
@@ -329,23 +329,11 @@
               Input: string
               Output: list of list of pairs
               "
-             (let ((result (labels ((wrap-string-in-parentheses (str)
-                                      (concatenate 'string "(" str ")"))
-                                    (pairs-to-lexkeys (list-of-pairs)
-                                      (mapcar
-                                        #'(lambda (pair)
-                                            (make-lexkey :cat (second pair) :phon (first pair)))
-                                        list-of-pairs)))
-                             (mapcar
-                               #'(lambda (x)
-                                   (pairs-to-lexkeys
-                                     (aux:partition
-                                       (read-from-string
-                                         (wrap-string-in-parentheses x))
-                                       2))) 
-                               (typecase expression 
-                                 (simple-base-string (flookup expression))
-                                 (symbol (flookup (str:downcase (symbol-name expression)))))))))
+             (let ((result (typecase expression 
+                             (simple-base-string
+                               (funcall (*state* :morph-analyzer) expression))
+                             (symbol
+                               (funcall (*state* :morph-analyzer) (str:downcase (symbol-name expression)))))))
                (if (some
                      #'(lambda (item)
                          (some
@@ -371,7 +359,7 @@
                                            #'(lambda (parse)
                                                (mapcar
                                                  #'(lambda (lexkey)
-                                                     (list (lexkey-phon lexkey) (lexkey-cat lexkey)))
+                                                     (list (lexkey-phon lexkey) (lexkey-pos lexkey)))
                                                  parse))
                                            parse-list)))))
           (generate-enums
@@ -415,9 +403,9 @@
   (labels ((push-item (item)
              "item is an alist: (key pos phon syn sem)"
              (let* ((sign (construct-sign item))
-                    (cat (cadr (assoc 'cat item)))
+                    (pos (cadr (assoc 'pos item)))
                     (phon (sign-phon sign)))
-               (lexicon (make-lexkey :cat cat :phon phon) sign)))
+               (lexicon (make-lexkey :pos pos :phon phon) sign)))
            (construct-sign (lex)
              (make-sign :phon (cadr (assoc 'phon lex))
                         :syn (unifier:refresh-vars (cadr (assoc 'syn lex)))

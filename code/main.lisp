@@ -35,7 +35,7 @@
 (mapc
   (lambda (name)
     (load (str:concat name ".lisp")))
-  '("service" "conditions" "utils" "unifier" "lc-q" "sr-parser" "syn-parser" "sem-parser" "lexicon-reader" "ccg" "flookup"))
+  '("service" "conditions" "utils" "unifier" "lc-q" "sr-parser" "syn-parser" "sem-parser" "lexicon-reader" "ccg" "morphology"))
 
 (defun proc-input (input)
   (case (car input)
@@ -49,7 +49,7 @@
                                                     (sort
                                                       (mapcar
                                                         #'(lambda (lexkey)
-                                                            (list (lexkey-phon lexkey) (lexkey-cat lexkey)))
+                                                            (list (lexkey-phon lexkey) (lexkey-pos lexkey)))
                                                         (*state* 'vocab))
                                                       #'string<
                                                       :key #'(lambda (x) (symbol-name (second x)))
@@ -153,7 +153,7 @@
         (NO-MORPH-PARSE (e)
                         (list (format nil "No morph parse for ~A." (input e))))
         (ITEM-NOT-FOUND (e)
-                        (list (format nil "~A (~A) is not in your lexicon." (lexkey-phon (lexkey e)) (lexkey-cat (lexkey e)))))))
+                        (list (format nil "~A (~A) is not in your lexicon." (lexkey-phon (lexkey e)) (lexkey-pos (lexkey e)))))))
     1))
 
 
@@ -190,7 +190,6 @@
   (*state* :derivation nil)
   (*state* :uniq-parses t)
   (*state* :lexicon (aux:multiset-table))
-
   (handler-case (uiop:chdir (*state* :project-path))
     (SB-POSIX:SYSCALL-ERROR (err)
                             (format t "~%Cannot find ~A~%~%" (*state* :project-path))
@@ -199,24 +198,30 @@
     )
 
   (*state* :prompt (car (last (pathname-directory (*state* :project-path)))))
-
-  (if (*state* :morphology) (handler-case (setup-morph-analyzer (*state* :prompt))
-                              (MISSING-FST (e)
-                                           (format t "~%Cannot find the FST file '~A', aborting..~%~%" (file-name e))
-                                           (sb-ext:quit))))
-
   (*state* :debug-lexicon-path (make-pathname :name "_lexicon" :type "lisp" :directory (pathname-directory (*state* :project-path))))
   (if (probe-file (*state* :debug-lexicon-path))
       (delete-file (*state* :debug-lexicon-path)))
-
   (*state* :lexicon-path (make-pathname :name (*state* :prompt) :type "lex" :directory  (pathname-directory (*state* :project-path))))
+  (when (not (probe-file (*state* :lexicon-path)))
+      (format t "~%Cannot find ~A~%~%Are you in the wrong directory?~%~%Or do your directory and file names differ?~%~%" (*state* :lexicon-path))
+      (sb-ext:quit))
   (*state* :mode-table (aux:list-to-hash-table
                          '((star (star))
                            (harmonic (harmonic star))
                            (cross (cross star))
                            (dot (harmonic cross star)))))
   (*state* :theory-path (make-pathname :name (*state* :prompt) :type "thr" :directory (pathname-directory (*state* :project-path))))
-  (*state* :theory (aux:read-from-file (*state* :theory-path)))
+  (*state* :theory (handler-case (aux:read-from-file (*state* :theory-path))
+                     (FILE-DOES-NOT-EXIST (err)
+                            (format t "~%Cannot find ~A~%~%Are you in the wrong directory?~%~%Or do your directory and file names differ?~%~%" (*state* :theory-path))
+                            (sb-ext:quit))
+                     ))
+  (*state* :mrf-path (make-pathname :name (*state* :prompt) :type "mrf" :directory (pathname-directory (*state* :project-path))))
+  (*state* :fst-path (make-pathname :name (*state* :prompt) :type "fst" :directory (pathname-directory (*state* :project-path))))
+  (if (*state* :morphology) (*state* :morph-analyzer (handler-case (make-morph-analyzer)
+                                                       (MISSING-MORPH-FILE (e)
+                                                                           (format t "~%Cannot find an ~A.fst or ~A.mrf, aborting..~%~%" (file-name e) (file-name e))
+                                                                           (sb-ext:quit)))))
   (*state* :feature-dictionary      (cdr  (assoc 'feature-dictionary (*state* :theory))))
   (*state* :features                (mapcar #'car (*state* :feature-dictionary)))
   (*state* :category-template       (mapcar #'(lambda (x) (list x (gensym "?"))) (*state* :features)))

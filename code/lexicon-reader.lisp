@@ -5,7 +5,7 @@
 ;;;
 ;;; Input format:
 ;;;
-;;; def <cat-name> {s\np; \x.lex'x; dog cat}:
+;;; def <cat-name> () {s\np; \x.lex'x; dog cat}:
 ;;;
 
 (defmacro lalr-parse (words with parser-package-name)
@@ -303,13 +303,13 @@
                (mapcar
                  #'(lambda (entry)
                      (re:register-groups-bind
-                       (key cat syn sem forms)
+                       (key pos syn sem forms)
                        (inner-scanner entry)
                        (list
                          (read-from-string key)
-                         (if (or (string= cat "") (not (*state* :morphology)))
+                         (if (or (string= pos "") (not (*state* :morphology)))
                              '_
-                             (read-from-string cat))
+                             (read-from-string pos))
                          syn
                          sem
                          forms)))
@@ -317,9 +317,9 @@
                    (re:do-matches-as-strings
                      (match outer-scanner content store)
                      (push match store))))))
-           (build-entry (key cat phon syn sem)
+           (build-entry (key pos phon syn sem)
              `((key  ,key)
-               (cat  ,cat)
+               (pos  ,pos)
                (phon ,phon)
                (syn  ,syn)
                (sem  ,(sublis (list (cons 'common-lisp-user::lex phon)) sem))))
@@ -327,11 +327,11 @@
              (mapcar
                #'(lambda (entry)
                    (destructuring-bind
-                     (key cat syn sem tokens)
+                     (key pos syn sem tokens)
                      entry
                      (list
                        key
-                       (if (*state* :morphology) cat '_)
+                       (if (*state* :morphology) pos '_)
                        (let ((syn-cat (lalr-parse (syn-lexer syn) with :syn-parser)))
                          (if (typep syn-cat 'string)
                              (error (make-condition 'bad-syntactic-type
@@ -365,10 +365,10 @@
       (with-open-file (debug-stream (*state* :debug-lexicon-path) :direction :output)
         (dolist (entry (generate-entry-list))
           (destructuring-bind
-            (key cat syn sem tokens)
+            (key pos syn sem tokens)
             entry
             (dolist (token tokens)
-              (let ((item (build-entry key cat token syn sem)))
+              (let ((item (build-entry key pos token syn sem)))
                 (format debug-stream "~A~%~%" item)
                 (push item store))))))
       store)))
