@@ -17,7 +17,10 @@ def noun (n) {
 n[pl]; lex' ; spies dogs
 }
 def determiner () {
-np[agr=?x]/n[agr=?x]; lex'; the a
+np[agr=?x]/n[agr=?x]; lex'; the
+}
+def determiner () {
+np/n[sg]; lex'; a 
 }
 def singular (agr) {
 s[+]\np[sg]\(s[-]\np); \x.x; sg
