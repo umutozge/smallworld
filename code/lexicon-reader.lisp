@@ -362,7 +362,7 @@
 
     "now open the lex file and parse it"
     (let ((store nil))
-      (with-open-file (debug-stream (*state* :debug-lexicon-path) :direction :output)
+      (with-open-file (debug-stream (*state* :debug-lexicon-path) :direction :output :if-exists :supersede)
         (dolist (entry (generate-entry-list))
           (destructuring-bind
             (key pos syn sem tokens)

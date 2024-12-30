@@ -32,13 +32,23 @@
                    (gethash key table)
                    val)))))
 
+
+;; set global switches
+(*state* :eta-normalize nil)
+(*state* :debug-mode nil)
+(*state* :derivation nil)
+(*state* :uniq-parses t)
+
+;; load the components
 (mapc
   (lambda (name)
     (load (str:concat name ".lisp")))
   '("service" "conditions" "utils" "unifier" "lc-q" "sr-parser" "syn-parser" "sem-parser" "lexicon-reader" "ccg" "morphology"))
 
 (defun proc-input (input)
+  "Handle the console input"
   (case (car input)
+    ((nil) (return-from proc-input nil))
     ((:help :h)
      (display-help))
     ((:quit :q) (princ "bye, come again!") (terpri) (quit))
@@ -68,6 +78,7 @@
        (let ((expression (cdr input))) (display-parses expression (parse-expression expression))) (terpri))
     ((:parse-file :pf)
       (parse-file (cadr input)) (terpri))
+;     ((:reload :rl) (main))
     ((:reload :rl) (main))
     (read-error (princ "unknown command") (terpri))
     (otherwise (cond ((keywordp (car input)) (princ "unknown command") (terpri))
@@ -93,12 +104,13 @@
          (outpath (make-pathname :name (pathname-name inpath) :directory (pathname-directory inpath) :type "out"))
          (sentences (handler-case (with-open-file (str inpath :direction :input :if-does-not-exist :error)
                                     (reverse
-                                      (mapcar
-                                        #'(lambda (string)
-                                            (read-from-string (str:concat "(" string ")")))
-                                        (do  ((sentence (read-line str nil nil) (read-line str nil nil))
-                                              (store nil (cons sentence store)))
-                                             ((null sentence) store)))))
+                                      (remove-if #'null
+                                                 (mapcar
+                                                   #'(lambda (string)
+                                                       (read-from-string (str:concat "(" string ")")))
+                                                   (do  ((sentence (read-line str nil nil) (read-line str nil nil))
+                                                         (store nil (cons sentence store)))
+                                                        ((null sentence) store))))))
                       (FILE-DOES-NOT-EXIST (err)
                                            (format t "~%The file ~A cannot be found.~%~%Check path and make sure to avoid capital letters and spaces in your filenames.~%" (namestring inpath))
                                            (return-from parse-file 0)
@@ -126,6 +138,7 @@
                           (result (caadr item))
                           (derivation (cadr item)))
 
+                      (format str "~%~%PARSED: ~{~A ~}~%" input-expression)
                       (format str "~%--------------------PARSE ~D--------------------~%" index)
                       (if (*state* :debug-mode) (format t "~A~%" (caadr item)))
                       (format str "~%~A~%" (pretty-print :type :sign :format :text :form result))
@@ -185,10 +198,6 @@
                                                                      (or (pathname-directory cl-pathname)
                                                                          (list :relative))
                                                                      (list (pathname-name cl-pathname)))))))))
-  (*state* :eta-normalize nil)
-  (*state* :debug-mode nil)
-  (*state* :derivation nil)
-  (*state* :uniq-parses t)
   (*state* :lexicon (aux:multiset-table))
   (handler-case (uiop:chdir (*state* :project-path))
     (SB-POSIX:SYSCALL-ERROR (err)
