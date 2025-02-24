@@ -371,3 +371,41 @@
                 (format debug-stream "~A~%~%" item)
                 (push item store))))))
       store)))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;    Lexicon Management        ;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun load-lexicon ()
+  "Loads lexical items fetched by read-lexicon to aux:multi-set-table pointed to by (*state* :lexicon).
+
+   Keys to the lexicon are (pos phon)"
+
+  (labels ((push-item (item)
+             "item is an alist: (key pos phon syn sem)"
+             (let* ((sign (construct-sign item))
+                    (pos (cadr (assoc 'pos item)))
+                    (phon (sign-phon sign)))
+               (lexicon (make-lexkey :pos pos :phon phon) sign)))
+           (construct-sign (lex)
+             (make-sign :phon (cadr (assoc 'phon lex))
+                        :syn (unifier:refresh-vars (cadr (assoc 'syn lex)))
+                        :sem (cadr (assoc 'sem lex)))))
+
+    (do ((count 0 (+ 1 count))
+          (items
+            (handler-case (read-lexicon)
+              (SB-KERNEL::ARG-COUNT-ERROR (e)
+                                          (format t "~%~%~A***BROKEN LEXICON, REVISE and :RELOAD.***~%~%" #\Tab ))
+              (INVALID-FEATURE-VALUE (e)
+                                     (format t "~%~%LEXICON ERROR: ~A is an invalid value for the feature ~A, revise and :reload.~%" (value e) (feature e)))
+              (DEFAULT-FEATURE-OVERRIDE (e)
+                                        (format t "~%~%LEXICON ERROR: ~A attempts to override the default ~A, revise and :reload.~%" (overrider e) (default e)))
+              (BAD-SYNTACTIC-TYPE (e)
+                                  (format t "~%~%LEXICON ERROR: Bad syntactic type: ~A, revise and :reload.~%" (definition e)))
+              (BAD-SEMANTIC-INTERPRETATION (e)
+                                  (format t "~%~%LEXICON ERROR: Bad semantic interpretation: ~A, revise and :reload.~%" (definition e))))
+            (cdr items)))
+        ((endp items) (progn (lexicon :keys) count))
+        (push-item (car items)))))
