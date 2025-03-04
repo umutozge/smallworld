@@ -295,7 +295,7 @@
 ;;;;       Main drive       ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun r-lexicon ()
+(defun read-lexicon ()
 
   (labels ((lex-entry-to-alist (lex-ht)
              (let ((store nil))
@@ -327,22 +327,20 @@
                          (mapcar #'read-from-string phon)))
                lex-ht))
 
-           (build-entry (key pos phon syn sem)
-             `((key  ,key)
-               (pos  ,pos)
-               (phon ,phon)
+           (build-entry (pos syn sem phon)
+             `((pos  ,pos)
                (syn  ,syn)
-               (sem  ,(sublis (list (cons 'common-lisp-user::lex phon)) sem))))
+               (sem  ,(sublis (list (cons 'common-lisp-user::lex phon)) sem))
+               (phon ,phon)))
 
            (generate-entry-list (entries)
              (mapcar
                #'(lambda (entry)
                    (destructuring-bind
-                     (key pos syn sem tokens)
+                     (pos syn sem phons)
                      entry
                      (list
-                       key
-                       (if (*state* :morphology) pos '_)
+                       (read-from-string pos)
                        (let ((syn-cat (lalr-parse (syn-lexer syn) with :syn-parser)))
                          (if (typep syn-cat 'string)
                              (error (make-condition 'bad-syntactic-type
@@ -353,15 +351,21 @@
                              (error (make-condition 'bad-semantic-interpretation
                                                     :definition sem))
                              sem-interp))
-                       (aux:string-to-list tokens))))
+                       phons)))
                entries)))
 
-    (let* ((project-data (cl-yaml:parse (uiop:read-file-string "../projects/basic/basic.yaml")))
+    (let* ((project-data (cl-yaml:parse (uiop:read-file-string "basic.yaml")))
            (feature-dictionary (mapcar #'read-from-string (gethash "feature-dictionary" project-data)))
            (category-bundles (mapcar #'read-from-string (gethash "category-bundles" project-data)))
            (lexicon (gethash "lexicon" project-data))
            (entries 
-             (remove-if
+             (mapcar
+               #'(lambda (entry)
+                   (list (cadr (assoc 'pos entry))
+                         (cadr (assoc 'syn entry))
+                         (cadr (assoc 'sem entry))
+                         (cadr (assoc 'phon entry))))
+               (remove-if
                        #'(lambda (x)
                            (member (cadr (assoc 'status x)) '("off" "false" "inactive") :test #'string=))
                        (mapcan
@@ -371,7 +375,7 @@
                              (mapcar #'lex-entry-to-alist 
                                      (explode-syns (fix-phon lex-ht))))
                          ; check if multiple entries to avoid error in a singleton lexicon
-                         (if (consp lexicon) lexicon (list lexicon))))
+                         (if (consp lexicon) lexicon (list lexicon)))))
              ))
 
       "add items to the syn-lexicon on the basis of *feature-dictionary*"
@@ -384,89 +388,101 @@
                   'fval)
                 syn-lexicon))
         (push (list (car x) 'fname) syn-lexicon))
-      "then add *category-bundle-symbols* as acat items to the syn-lexicon"
+
+      "add *category-bundle-symbols* as acat items to the syn-lexicon"
       (dolist (x (copy-alist category-bundles))
         (push (list (car x) 'acat) syn-lexicon))
 
-      )))
+      "now open the lex file and parse it"
+      (let ((store nil))
+        (with-open-file (debug-stream (*state* :debug-lexicon-path) :direction :output :if-exists :supersede)
+          (dolist (entry (generate-entry-list entries))
+            (destructuring-bind
+              (pos syn sem phons)
+              entry
+              (dolist (phon phons)
+                (let ((item (build-entry  pos syn sem phon)))
+                  (format debug-stream "~A~%~%" item)
+                  (push item store))))))
+        store))))
 
 
-(defun read-lexicon ()
-  (labels ((read-entries (content)
-             (let ((outer-scanner (re:create-scanner "[^!]def\\s+[^{]+\\s*{[^}]+}"))
-                   (inner-scanner (re:create-scanner "[^!]def\\s+([^{( ]+)\\s*[(]([^)]*)[)][ \\t\\n]*{[ \\t\\n]*(.+)[ \\t\\n]*;[ \\t\\n]*([^}]+)[ \\t\\n]*;[ \\t\\n]*([^}]*)}")))
-               (mapcar
-                 #'(lambda (entry)
-                     (re:register-groups-bind
-                       (key pos syn sem forms)
-                       (inner-scanner entry)
-                       (list
-                         (read-from-string key)
-                         (if (or (string= pos "") (not (*state* :morphology)))
-                             '_
-                             (read-from-string pos))
-                         syn
-                         sem
-                         forms)))
-                 (let ((store nil))
-                   (re:do-matches-as-strings
-                     (match outer-scanner content store)
-                     (push match store))))))
-           (build-entry (key pos phon syn sem)
-             `((key  ,key)
-               (pos  ,pos)
-               (phon ,phon)
-               (syn  ,syn)
-               (sem  ,(sublis (list (cons 'common-lisp-user::lex phon)) sem))))
-           (generate-entry-list ()
-             (mapcar
-               #'(lambda (entry)
-                   (destructuring-bind
-                     (key pos syn sem tokens)
-                     entry
-                     (list
-                       key
-                       (if (*state* :morphology) pos '_)
-                       (let ((syn-cat (lalr-parse (syn-lexer syn) with :syn-parser)))
-                         (if (typep syn-cat 'string)
-                             (error (make-condition 'bad-syntactic-type
-                                                    :definition syn))
-                             syn-cat))
-                       (let ((sem-interp (lalr-parse (sem-tokenizer sem) with :sem-parser)))
-                         (if (typep sem-interp 'string)
-                             (error (make-condition 'bad-semantic-interpretation
-                                                    :definition sem))
-                             sem-interp))
-                       (aux:string-to-list tokens))
-                       ))
-               (read-entries (aux:read-file-as-string (*state* :lexicon-path))))))
-
-    "add items to the syn-lexicon on the basis of *feature-dictionary*"
-    (dolist (x (*state* :feature-dictionary))
-      (dolist (y (cdr x))
-        (push (list
-                (if (integerp y)
-                    y;(intern (string (digit-char y)))
-                    y)
-                'fval)
-              syn-lexicon))
-      (push (list (car x) 'fname) syn-lexicon))
-    "then add *category-bundle-symbols* as acat items to the syn-lexicon"
-    (dolist (x (copy-alist (*state* :category-bundles)))
-      (push (list (car x) 'acat) syn-lexicon))
-
-    "now open the lex file and parse it"
-    (let ((store nil))
-      (with-open-file (debug-stream (*state* :debug-lexicon-path) :direction :output :if-exists :supersede)
-        (dolist (entry (generate-entry-list))
-          (destructuring-bind
-            (key pos syn sem tokens)
-            entry
-            (dolist (token tokens)
-              (let ((item (build-entry key pos token syn sem)))
-                (format debug-stream "~A~%~%" item)
-                (push item store))))))
-      store)))
+; (defun read-lexicon ()
+;   (labels ((read-entries (content)
+;              (let ((outer-scanner (re:create-scanner "[^!]def\\s+[^{]+\\s*{[^}]+}"))
+;                    (inner-scanner (re:create-scanner "[^!]def\\s+([^{( ]+)\\s*[(]([^)]*)[)][ \\t\\n]*{[ \\t\\n]*(.+)[ \\t\\n]*;[ \\t\\n]*([^}]+)[ \\t\\n]*;[ \\t\\n]*([^}]*)}")))
+;                (mapcar
+;                  #'(lambda (entry)
+;                      (re:register-groups-bind
+;                        (key pos syn sem forms)
+;                        (inner-scanner entry)
+;                        (list
+;                          (read-from-string key)
+;                          (if (or (string= pos "") (not (*state* :morphology)))
+;                              '_
+;                              (read-from-string pos))
+;                          syn
+;                          sem
+;                          forms)))
+;                  (let ((store nil))
+;                    (re:do-matches-as-strings
+;                      (match outer-scanner content store)
+;                      (push match store))))))
+;            (build-entry (key pos phon syn sem)
+;              `((key  ,key)
+;                (pos  ,pos)
+;                (phon ,phon)
+;                (syn  ,syn)
+;                (sem  ,(sublis (list (cons 'common-lisp-user::lex phon)) sem))))
+;            (generate-entry-list ()
+;              (mapcar
+;                #'(lambda (entry)
+;                    (destructuring-bind
+;                      (key pos syn sem tokens)
+;                      entry
+;                      (list
+;                        key
+;                        (if (*state* :morphology) pos '_)
+;                        (let ((syn-cat (lalr-parse (syn-lexer syn) with :syn-parser)))
+;                          (if (typep syn-cat 'string)
+;                              (error (make-condition 'bad-syntactic-type
+;                                                     :definition syn))
+;                              syn-cat))
+;                        (let ((sem-interp (lalr-parse (sem-tokenizer sem) with :sem-parser)))
+;                          (if (typep sem-interp 'string)
+;                              (error (make-condition 'bad-semantic-interpretation
+;                                                     :definition sem))
+;                              sem-interp))
+;                        (aux:string-to-list tokens))
+;                        ))
+;                (read-entries (aux:read-file-as-string (*state* :lexicon-path))))))
+; 
+;     "add items to the syn-lexicon on the basis of *feature-dictionary*"
+;     (dolist (x (*state* :feature-dictionary))
+;       (dolist (y (cdr x))
+;         (push (list
+;                 (if (integerp y)
+;                     y;(intern (string (digit-char y)))
+;                     y)
+;                 'fval)
+;               syn-lexicon))
+;       (push (list (car x) 'fname) syn-lexicon))
+;     "then add *category-bundle-symbols* as acat items to the syn-lexicon"
+;     (dolist (x (copy-alist (*state* :category-bundles)))
+;       (push (list (car x) 'acat) syn-lexicon))
+; 
+;     "now open the lex file and parse it"
+;     (let ((store nil))
+;       (with-open-file (debug-stream (*state* :debug-lexicon-path) :direction :output :if-exists :supersede)
+;         (dolist (entry (generate-entry-list))
+;           (destructuring-bind
+;             (key pos syn sem tokens)
+;             entry
+;             (dolist (token tokens)
+;               (let ((item (build-entry key pos token syn sem)))
+;                 (format debug-stream "~A~%~%" item)
+;                 (push item store))))))
+;       store)))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -479,7 +495,7 @@
    Keys to the lexicon are (pos phon)"
 
   (labels ((push-item (item)
-             "item is an alist: (key pos phon syn sem)"
+             "item is an alist: (pos syn sem phon)"
              (let* ((sign (construct-sign item))
                     (pos (cadr (assoc 'pos item)))
                     (phon (sign-phon sign)))
