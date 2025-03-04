@@ -8,6 +8,7 @@
 (ql:quickload :unix-opts :silent t)
 (ql:quickload :cl-lex :silent t)
 (ql:quickload :cl-yaml :silent t)
+(ql:quickload :alexandria :silent t)
 (rename-package "CL-PPCRE" "CL-PPCRE" '("PPCRE" "RE"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
