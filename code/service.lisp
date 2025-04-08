@@ -41,6 +41,7 @@
            :tree2qtree
            :cartesian-product
            :update-alist
+           :pathnames-by-extension
            ))
 
 (in-package aux)
@@ -235,6 +236,13 @@
 ;; I/O Utils ;;
 ;;           ;;
 ;;;;;;;;;;;;;;;
+
+
+(defun pathnames-by-extension (extension &optional (directory (uiop:getcwd)))
+  "return a list of pathnames in the provided directory (default: current directory) with the given extension"
+  (remove-if-not
+    #'(lambda (x) (string= (pathname-type x) extension)) 
+    (uiop:directory-files directory)))
 
 (defun string-to-pathname (&rest strings)
  (make-pathname :name (apply

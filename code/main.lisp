@@ -12,15 +12,38 @@
 (ql:quickload :alexandria :silent t)
 (rename-package "CL-PPCRE" "CL-PPCRE" '("PPCRE" "RE"))
 
+;; load the components
+(mapc
+  (lambda (name)
+    (load (str:concat name ".lisp")))
+  '("service" "conditions" "utils" "unifier" "lc-q" "sr-parser" "syn-parser" "sem-parser" "lexicon-reader" "ccg" "morphology"))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Command-line options ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defun default-fst ()
+   (car (aux:pathnames-by-extension "fst")))
+
+(defun default-project ()
+   (car (aux:pathnames-by-extension "yaml")))
 
 (opts:define-opts
   (:name :morphology
+   :default #'default-fst 
    :description "invoke morphological parsing"
    :short #\m
-   :long "morphology"))
+   :long "morphology"
+   :arg-parser #'(lambda (str)
+                   (merge-pathnames (uiop:getcwd) (pathname str)))
+   :meta-var "FST-FILE"
+   )
+  (:name :project
+   :default #'default-project
+   :arg-parser #'(lambda (str)
+                   (merge-pathnames (uiop:getcwd) (pathname str)))
+   :description "project yaml file"
+   :short #\p
+   :long "project"))
 
 
 (setf *print-pretty* t)
@@ -42,11 +65,6 @@
 (*state* :derivation nil)
 (*state* :uniq-parses t)
 
-;; load the components
-(mapc
-  (lambda (name)
-    (load (str:concat name ".lisp")))
-  '("service" "conditions" "utils" "unifier" "lc-q" "sr-parser" "syn-parser" "sem-parser" "lexicon-reader" "ccg" "morphology"))
 
 (defun proc-input (input)
   "Handle the console input"
@@ -103,7 +121,6 @@
   (format t "~{~{~24A~^ -- ~} ~%~}" data)
   (format t "~%")))
 
-
 (defun parse-file (filename)
   (let* ((inpath (merge-pathnames (string-downcase filename)))
          (outpath (make-pathname :name (pathname-name inpath) :directory (pathname-directory inpath) :type "out"))
@@ -131,7 +148,6 @@
         (display-parses i (parse-expression i) str))
       (format t "~%Output written to ~A.~%" (namestring outpath))
       )))
-
 
 (defun display-parses (input-expression parses &optional (str t))
   (if parses
@@ -174,7 +190,6 @@
                         (list (format nil "~A (~A) is not in your lexicon." (lexkey-phon (lexkey e)) (lexkey-pos (lexkey e)))))))
     1))
 
-
 (defun toggle-flag (flag)
   (format nil "~A is ~A" flag (let ((state (*state* flag (not (*state* flag)))))
                                 (if state 'on 'off))))
@@ -192,6 +207,8 @@
   (multiple-value-bind (options args)
     (opts:get-opts)
     (*state* :morphology (getf options :morphology))
+    (print (*state* :project (getf options :project)))
+    (print (*state* :project-dir (pathname-directory (*state* :project))))
     (*state* :project-path (merge-pathnames (let ((cl-pathname (if args
                                                                    (pathname (car args))
                                                                    (sb-posix:getcwd))))
@@ -230,7 +247,7 @@
                             (format t "~%Cannot find ~A~%~%Are you in the wrong directory?~%~%Or do your directory and file names differ?~%~%" (*state* :theory-path))
                             (sb-ext:quit))
                      ))
-  (*state* :mrf-path (make-pathname :name (*state* :prompt) :type "mrf" :directory (pathname-directory (*state* :project-path))))
+;   (*state* :mrf-path (make-pathname :name (*state* :prompt) :type "mrf" :directory (pathname-directory (*state* :project-path))))
   (*state* :fst-path (make-pathname :name (*state* :prompt) :type "fst" :directory (pathname-directory (*state* :project-path))))
   
   (*state* :feature-dictionary      (cdr  (assoc 'feature-dictionary (*state* :theory))))
@@ -240,7 +257,7 @@
   (run-program "/usr/bin/clear" nil :output *standard-output*)
   (format t "Welcome to SmallWorld~%~%A linguists' parser based on CCG~%~%Type :help for help, :quit for quit.~%")
   (format t "~%------------------------------" )
-  (format t "~%Theory: ~a" (*state* :theory-path))
+;   (format t "~%Theory: ~a" (*state* :theory-path))
   (format t "~%Lexicon: ~a" (*state* :lexicon-path))
   (format t "~%Loaded ~D items." (load-lexicon))
   (format t "~%------------------------------~%" )
