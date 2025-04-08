@@ -1,0 +1,61 @@
+#
+# A sample SmallWorld Project
+#
+# basic.yaml
+#
+---
+
+ feature-dictionary:
+  - (agr pl sg)
+  - (cat v n)
+  - (bar 0 1 2)
+
+ category-bundles:
+  - (s (cat v)) 
+  - (np (cat n) (bar 2))
+  - (n (cat n) (bar 0))
+
+ lexicon:
+  - {pos: n, phon: [john], syn: "np[sg]", sem: lex'}
+
+  - pos: n
+    syn: np[sg]
+    sem: lex' 
+    phon:
+      - john
+      - mary
+
+  - pos: n
+    syn: n[sg]
+    sem: lex' 
+    phon: [dog,cat,spy]
+
+  - pos: n
+    syn: n[pl]
+    sem: lex' 
+    phon: [dogs,cats,spies]
+
+  - pos: v
+    syn: s\np[agr=sg]
+    sem: lex' 
+    phon: [talks,walks]
+
+  - pos: v
+    syn: s\np[agr=pl]
+    sem: lex'
+    phon: [talk,walk]
+
+  - pos: v
+    syn: s\np[agr=sg]/np
+    sem: lex' 
+    phon: [loves,hates]
+
+  - pos: v
+    syn: s\np[agr=pl]/np
+    sem: lex' 
+    phon: [love,hate]
+
+  - pos: d
+    syn: np[agr=?x]/n[agr=?x]
+    sem: lex' 
+    phon: [the]
