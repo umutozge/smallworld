@@ -342,11 +342,8 @@
                            item))
                      result)
                    (error (make-condition 'no-morph-parse :input expression)) 
-                   result)))
-           
-           )
+                   result))))
 
-      (if (*state* :morphology)
           (reduce
             #'append
             (mapcar
@@ -361,12 +358,7 @@
                                                  #'(lambda (lexkey)
                                                      (list (lexkey-phon lexkey) (lexkey-pos lexkey)))
                                                  parse))
-                                           parse-list)))))
-          (generate-enums
-            (mapcar
-              #'(lambda (x)
-                  (make-lexkey :phon x))
-              input)))))
+                                           parse-list)))))))
 
 (defun parse (expression)
   (mapcar

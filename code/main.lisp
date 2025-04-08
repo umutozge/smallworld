@@ -1,5 +1,6 @@
-;(declaim (optimize (speed 0) (safety 3) (debug 3)))
+; (declaim (optimize (speed 0) (safety 3) (debug 3)))
 ;(declaim (sb-ext:muffle-conditions cl:warning))
+(sb-ext:enable-debugger)
 
 (load (merge-pathnames ".sbclrc" (user-homedir-pathname)))
 (ql:quickload :uiop :silent t)
@@ -7,17 +8,43 @@
 (ql:quickload :cl-ppcre :silent t)
 (ql:quickload :unix-opts :silent t)
 (ql:quickload :cl-lex :silent t)
+(ql:quickload :cl-yaml :silent t)
+(ql:quickload :alexandria :silent t)
 (rename-package "CL-PPCRE" "CL-PPCRE" '("PPCRE" "RE"))
+
+;; load the components
+(mapc
+  (lambda (name)
+    (load (str:concat name ".lisp")))
+  '("service" "conditions" "utils" "unifier" "lc-q" "sr-parser" "syn-parser" "sem-parser" "lexicon-reader" "ccg" "morphology"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Command-line options ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defun default-morphology ()
+  (car (aux:pathnames-by-extension "fst")))
+
+(defun default-project ()
+   (car (aux:pathnames-by-extension "yaml")))
+
 (opts:define-opts
   (:name :morphology
+   :default #'default-morphology 
    :description "invoke morphological parsing"
    :short #\m
-   :long "morphology"))
+   :long "morphology"
+   :arg-parser #'(lambda (str)
+                   (merge-pathnames (uiop:getcwd) (pathname str)))
+   :meta-var "FST-FILE"
+   )
+  (:name :project
+   :default #'default-project
+   :arg-parser #'(lambda (str)
+                   (merge-pathnames (uiop:getcwd) (pathname str)))
+   :description "project yaml file"
+   :short #\p
+   :long "project"))
 
 
 (setf *print-pretty* t)
@@ -39,15 +66,13 @@
 (*state* :derivation nil)
 (*state* :uniq-parses t)
 
-;; load the components
-(mapc
-  (lambda (name)
-    (load (str:concat name ".lisp")))
-  '("service" "conditions" "utils" "unifier" "lc-q" "sr-parser" "syn-parser" "sem-parser" "lexicon-reader" "ccg" "morphology"))
 
 (defun proc-input (input)
   "Handle the console input"
   (case (car input)
+    ((:debug :db)
+     (break)
+     (return-from proc-input nil))
     ((nil) (return-from proc-input nil))
     ((:help :h)
      (display-help))
@@ -78,7 +103,6 @@
        (let ((expression (cdr input))) (display-parses expression (parse-expression expression))) (terpri))
     ((:parse-file :pf)
       (parse-file (cadr input)) (terpri))
-;     ((:reload :rl) (main))
     ((:reload :rl) (main))
     (read-error (princ "unknown command") (terpri))
     (otherwise (cond ((keywordp (car input)) (princ "unknown command") (terpri))
@@ -97,7 +121,6 @@
   (format t "~%")
   (format t "~{~{~24A~^ -- ~} ~%~}" data)
   (format t "~%")))
-
 
 (defun parse-file (filename)
   (let* ((inpath (merge-pathnames (string-downcase filename)))
@@ -127,7 +150,6 @@
       (format t "~%Output written to ~A.~%" (namestring outpath))
       )))
 
-
 (defun display-parses (input-expression parses &optional (str t))
   (if parses
       (mapc
@@ -142,7 +164,7 @@
                       (format str "~%--------------------PARSE ~D--------------------~%" index)
                       (if (*state* :debug-mode) (format t "~A~%" (caadr item)))
                       (format str "~%~A~%" (pretty-print :type :sign :format :text :form result))
-                      (format str "~%------------------------------------------------~%")
+                      (format str "~%-----------------------------------------------~%")
                       (when (*state* :derivation)
                         (format str "~%--------------------DERIV ~D--------------------~%" (car item))
                         (format str "~A~%" (aux:maptree #'(lambda (x) (pretty-print :type :sign :format :text :form x)) derivation))
@@ -169,7 +191,6 @@
                         (list (format nil "~A (~A) is not in your lexicon." (lexkey-phon (lexkey e)) (lexkey-pos (lexkey e)))))))
     1))
 
-
 (defun toggle-flag (flag)
   (format nil "~A is ~A" flag (let ((state (*state* flag (not (*state* flag)))))
                                 (if state 'on 'off))))
@@ -187,6 +208,8 @@
   (multiple-value-bind (options args)
     (opts:get-opts)
     (*state* :morphology (getf options :morphology))
+    (*state* :project (getf options :project))
+    (*state* :project-dir (make-pathname :directory (pathname-directory (*state* :project))))
     (*state* :project-path (merge-pathnames (let ((cl-pathname (if args
                                                                    (pathname (car args))
                                                                    (sb-posix:getcwd))))
@@ -199,49 +222,33 @@
                                                                          (list :relative))
                                                                      (list (pathname-name cl-pathname)))))))))
   (*state* :lexicon (aux:multiset-table))
-  (handler-case (uiop:chdir (*state* :project-path))
+  (handler-case (uiop:chdir (*state* :project-dir))
     (SB-POSIX:SYSCALL-ERROR (err)
-                            (format t "~%Cannot find ~A~%~%" (*state* :project-path))
+                            (format t "~%Cannot find ~A~%~%" (*state* :project))
                             (sb-ext:quit)
                             )
     )
 
-  (*state* :prompt (car (last (pathname-directory (*state* :project-path)))))
-  (*state* :debug-lexicon-path (make-pathname :name "_lexicon" :type "lisp" :directory (pathname-directory (*state* :project-path))))
+  (*state* :prompt (pathname-name (*state* :project)))
+  (*state* :debug-lexicon-path (make-pathname :name "_lexicon" :type "lisp" :directory (pathname-directory (*state* :project-dir))))
   (if (probe-file (*state* :debug-lexicon-path))
       (delete-file (*state* :debug-lexicon-path)))
-  (*state* :lexicon-path (make-pathname :name (*state* :prompt) :type "lex" :directory  (pathname-directory (*state* :project-path))))
-  (when (not (probe-file (*state* :lexicon-path)))
-      (format t "~%Cannot find ~A~%~%Are you in the wrong directory?~%~%Or do your directory and file names differ?~%~%" (*state* :lexicon-path))
-      (sb-ext:quit))
   (*state* :mode-table (aux:list-to-hash-table
                          '((star (star))
                            (harmonic (harmonic star))
                            (cross (cross star))
                            (dot (harmonic cross star)))))
-  (*state* :theory-path (make-pathname :name (*state* :prompt) :type "thr" :directory (pathname-directory (*state* :project-path))))
-  (*state* :theory (handler-case (aux:read-from-file (*state* :theory-path))
-                     (FILE-DOES-NOT-EXIST (err)
-                            (format t "~%Cannot find ~A~%~%Are you in the wrong directory?~%~%Or do your directory and file names differ?~%~%" (*state* :theory-path))
-                            (sb-ext:quit))
-                     ))
-  (*state* :mrf-path (make-pathname :name (*state* :prompt) :type "mrf" :directory (pathname-directory (*state* :project-path))))
-  (*state* :fst-path (make-pathname :name (*state* :prompt) :type "fst" :directory (pathname-directory (*state* :project-path))))
-  (if (*state* :morphology) (*state* :morph-analyzer (handler-case (make-morph-analyzer)
-                                                       (MISSING-MORPH-FILE (e)
-                                                                           (format t "~%Cannot find an ~A.fst or ~A.mrf, aborting..~%~%" (file-name e) (file-name e))
-                                                                           (sb-ext:quit)))))
-  (*state* :feature-dictionary      (cdr  (assoc 'feature-dictionary (*state* :theory))))
-  (*state* :features                (mapcar #'car (*state* :feature-dictionary)))
-  (*state* :category-template       (mapcar #'(lambda (x) (list x (gensym "?"))) (*state* :features)))
-  (*state* :category-bundles (cdr (assoc 'category-bundles (*state* :theory))))
   (run-program "/usr/bin/clear" nil :output *standard-output*)
   (format t "Welcome to SmallWorld~%~%A linguists' parser based on CCG~%~%Type :help for help, :quit for quit.~%")
   (format t "~%------------------------------" )
-  (format t "~%Theory: ~a" (*state* :theory-path))
-  (format t "~%Lexicon: ~a" (*state* :lexicon-path))
+;   (format t "~%Theory: ~a" (*state* :theory-path))
+  (format t "~%Project: ~a" (pathname-name (*state* :project)))
   (format t "~%Loaded ~D items." (load-lexicon))
   (format t "~%------------------------------~%" )
+  (*state* :morph-analyzer (handler-case (make-morph-analyzer)
+                                                       (MISSING-MORPH-FILE (e)
+                                                                           (format t "~%Cannot find an ~A.fst or ~A.mrf, aborting..~%~%" (file-name e) (file-name e))
+                                                                           (sb-ext:quit))))
   (*state* 'vocab (funcall (*state* :lexicon) :keys))
   (format t "~%")
   (loop
@@ -253,5 +260,5 @@
                                 (END-OF-FILE (e)
                                              (list 'read-error))))
       (SB-SYS:INTERACTIVE-INTERRUPT (e)
-                                    (format t "~%User interrupt.~%~%"))
-      )))
+                                    (format t "~%User interrupt.~%~%")
+                                    (sb-ext:quit)))))

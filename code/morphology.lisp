@@ -10,15 +10,17 @@
                      (make-lexkey :pos (second pair) :phon (first pair))))
                list-of-pairs))) 
 
-    (cond ((probe-file (*state* :fst-path))
-            (let ((proc (uiop:launch-program
-                          (list "flookup" "-b" "-x" (concatenate 'string
-                                                                 (pathname-name (*state* :fst-path))
-                                                                 "."
-                                                                 (pathname-type (*state* :fst-path))))
-                          :input :stream :output :stream)))
-              #'(lambda (word)
-                  (write-line word (uiop:process-info-input proc))
+    (cond ((and
+             (*state* :morphology)
+             (probe-file (*state* :morphology)))
+           (let ((proc (uiop:launch-program
+                         (list "flookup" "-b" "-x" (concatenate 'string
+                                                                (pathname-name (*state* :morphology))
+                                                                "."
+                                                                (pathname-type (*state* :morphology))))
+                         :input :stream :output :stream)))
+             #'(lambda (word)
+                 (write-line word (uiop:process-info-input proc))
                   (force-output (uiop:process-info-input proc))
                   (labels 
                     ((wrap-string-in-parentheses (str)
@@ -37,27 +39,16 @@
                          (analyses (list line) (cons line analyses)))
                         ((string= line "") (rest analyses))))))))
 
-          ((probe-file (*state* :mrf-path))
-            (let ((mrf-table
-                    (reduce
-                      #'(lambda (table item)
-                          (funcall table (car item) (cdr item))
-                          table)
-                      (aux:read-from-file (*state* :mrf-path))
-                      :initial-value (aux:multiset-table))))
-              #'(lambda (word) ; word is string
-                  (mapcar 
-                    #'pairs-to-lexkeys 
-                    (let ((input (intern (string-upcase word))))
-                      (handler-case (funcall mrf-table input)
-                        (SIMPLE-ERROR (err)
-                                      (mapcar
-                                        #'(lambda (lexkey)
-                                            (list (list (lexkey-phon lexkey) (lexkey-pos lexkey))))
-                                        (remove-if-not
-                                          #'(lambda (lexkey)
-                                              (equal (lexkey-phon lexkey) input))
-                                          (funcall (*state* :lexicon) :keys))))))))))
+          ((not (*state* :morphology))
+           (let ((lexkeys (funcall (*state* :lexicon) :keys)))
+             #'(lambda (word)
+                 (let ((phon (intern (string-upcase word))))
+                   (list
+                     (remove-if-not 
+                       #'(lambda (lexkey)
+                           (equal (lexkey-phon lexkey) phon))
+                       lexkeys))))))
+
           (t
             (error
               (make-condition 'missing-morph-file
