@@ -12,12 +12,12 @@
 
     (cond ((and
              (*state* :morphology)
-             (probe-file (*state* :fst-path)))
+             (probe-file (*state* :morphology)))
            (let ((proc (uiop:launch-program
                          (list "flookup" "-b" "-x" (concatenate 'string
-                                                                (pathname-name (*state* :fst-path))
+                                                                (pathname-name (*state* :morphology))
                                                                 "."
-                                                                (pathname-type (*state* :fst-path))))
+                                                                (pathname-type (*state* :morphology))))
                          :input :stream :output :stream)))
              #'(lambda (word)
                  (write-line word (uiop:process-info-input proc))
@@ -38,30 +38,6 @@
                            (read-line (uiop:process-info-output proc)))
                          (analyses (list line) (cons line analyses)))
                         ((string= line "") (rest analyses))))))))
-
-          ((and 
-             (*state* :morphology)
-             (probe-file (*state* :mrf-path)))
-            (let ((mrf-table
-                    (reduce
-                      #'(lambda (table item)
-                          (funcall table (car item) (cdr item))
-                          table)
-                      (aux:read-from-file (*state* :mrf-path))
-                      :initial-value (aux:multiset-table))))
-              #'(lambda (word) ; word is string
-                  (mapcar 
-                    #'pairs-to-lexkeys 
-                    (let ((input (intern (string-upcase word))))
-                      (handler-case (funcall mrf-table input)
-                        (SIMPLE-ERROR (err)
-                                      (mapcar
-                                        #'(lambda (lexkey)
-                                            (list (list (lexkey-phon lexkey) (lexkey-pos lexkey))))
-                                        (remove-if-not
-                                          #'(lambda (lexkey)
-                                              (equal (lexkey-phon lexkey) input))
-                                          (funcall (*state* :lexicon) :keys))))))))))
 
           ((not (*state* :morphology))
            (let ((lexkeys (funcall (*state* :lexicon) :keys)))

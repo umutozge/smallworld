@@ -351,7 +351,7 @@
                        phons)))
                entries)))
 
-    (let* ((project-data (cl-yaml:parse (uiop:read-file-string "basic.yaml")))
+    (let* ((project-data (cl-yaml:parse (uiop:read-file-string (*state* :project))))
            (feature-dictionary (mapcar #'read-from-string (gethash "feature-dictionary" project-data)))
            (category-bundles (mapcar #'read-from-string (gethash "category-bundles" project-data)))
            (lexicon (gethash "lexicon" project-data))
@@ -374,6 +374,12 @@
                          ; check if multiple entries to avoid error in a singleton lexicon
                          (if (consp lexicon) lexicon (list lexicon)))))
              ))
+
+      "set state variables"
+      (*state* :feature-dictionary feature-dictionary)
+      (*state* :category-bundles category-bundles)
+      (*state* :features                (mapcar #'car (*state* :feature-dictionary)))
+      (*state* :category-template       (mapcar #'(lambda (x) (list x (gensym "?"))) (*state* :features)))
 
       "add items to the syn-lexicon on the basis of *feature-dictionary*"
       (dolist (x feature-dictionary)
