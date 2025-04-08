@@ -3,9 +3,6 @@
 ;;;
 
 ;;;
-;;; Input format:
-;;;
-;;; def <cat-name> () {s\np; \x.lex'x; dog cat}:
 ;;;
 
 (defmacro lalr-parse (words with parser-package-name)
@@ -318,12 +315,12 @@
                  (t (list lex-ht)))))
 
            (fix-phon (lex-ht)
-             "phons come as list of strings from yaml, this turns them into list of symbols"
+             "phons come as list of strings or a single string from yaml, this turns them into list of symbols"
              (check-type lex-ht hash-table)
              (let ((phon (gethash "phon" lex-ht)))
                (setf (gethash "phon" lex-ht)
                      (if (stringp phon)
-                         (list phon)
+                         (list (read-from-string phon))
                          (mapcar #'read-from-string phon)))
                lex-ht))
 
@@ -405,119 +402,3 @@
                   (format debug-stream "~A~%~%" item)
                   (push item store))))))
         store))))
-
-
-; (defun read-lexicon ()
-;   (labels ((read-entries (content)
-;              (let ((outer-scanner (re:create-scanner "[^!]def\\s+[^{]+\\s*{[^}]+}"))
-;                    (inner-scanner (re:create-scanner "[^!]def\\s+([^{( ]+)\\s*[(]([^)]*)[)][ \\t\\n]*{[ \\t\\n]*(.+)[ \\t\\n]*;[ \\t\\n]*([^}]+)[ \\t\\n]*;[ \\t\\n]*([^}]*)}")))
-;                (mapcar
-;                  #'(lambda (entry)
-;                      (re:register-groups-bind
-;                        (key pos syn sem forms)
-;                        (inner-scanner entry)
-;                        (list
-;                          (read-from-string key)
-;                          (if (or (string= pos "") (not (*state* :morphology)))
-;                              '_
-;                              (read-from-string pos))
-;                          syn
-;                          sem
-;                          forms)))
-;                  (let ((store nil))
-;                    (re:do-matches-as-strings
-;                      (match outer-scanner content store)
-;                      (push match store))))))
-;            (build-entry (key pos phon syn sem)
-;              `((key  ,key)
-;                (pos  ,pos)
-;                (phon ,phon)
-;                (syn  ,syn)
-;                (sem  ,(sublis (list (cons 'common-lisp-user::lex phon)) sem))))
-;            (generate-entry-list ()
-;              (mapcar
-;                #'(lambda (entry)
-;                    (destructuring-bind
-;                      (key pos syn sem tokens)
-;                      entry
-;                      (list
-;                        key
-;                        (if (*state* :morphology) pos '_)
-;                        (let ((syn-cat (lalr-parse (syn-lexer syn) with :syn-parser)))
-;                          (if (typep syn-cat 'string)
-;                              (error (make-condition 'bad-syntactic-type
-;                                                     :definition syn))
-;                              syn-cat))
-;                        (let ((sem-interp (lalr-parse (sem-tokenizer sem) with :sem-parser)))
-;                          (if (typep sem-interp 'string)
-;                              (error (make-condition 'bad-semantic-interpretation
-;                                                     :definition sem))
-;                              sem-interp))
-;                        (aux:string-to-list tokens))
-;                        ))
-;                (read-entries (aux:read-file-as-string (*state* :lexicon-path))))))
-; 
-;     "add items to the syn-lexicon on the basis of *feature-dictionary*"
-;     (dolist (x (*state* :feature-dictionary))
-;       (dolist (y (cdr x))
-;         (push (list
-;                 (if (integerp y)
-;                     y;(intern (string (digit-char y)))
-;                     y)
-;                 'fval)
-;               syn-lexicon))
-;       (push (list (car x) 'fname) syn-lexicon))
-;     "then add *category-bundle-symbols* as acat items to the syn-lexicon"
-;     (dolist (x (copy-alist (*state* :category-bundles)))
-;       (push (list (car x) 'acat) syn-lexicon))
-; 
-;     "now open the lex file and parse it"
-;     (let ((store nil))
-;       (with-open-file (debug-stream (*state* :debug-lexicon-path) :direction :output :if-exists :supersede)
-;         (dolist (entry (generate-entry-list))
-;           (destructuring-bind
-;             (key pos syn sem tokens)
-;             entry
-;             (dolist (token tokens)
-;               (let ((item (build-entry key pos token syn sem)))
-;                 (format debug-stream "~A~%~%" item)
-;                 (push item store))))))
-;       store)))
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;    Lexicon Management        ;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defun load-lexicon ()
-  "Loads lexical items fetched by read-lexicon to aux:multi-set-table pointed to by (*state* :lexicon).
-
-   Keys to the lexicon are (pos phon)"
-
-  (labels ((push-item (item)
-             "item is an alist: (pos syn sem phon)"
-             (let* ((sign (construct-sign item))
-                    (pos (cadr (assoc 'pos item)))
-                    (phon (sign-phon sign)))
-               (lexicon (make-lexkey :pos pos :phon phon) sign)))
-           (construct-sign (lex)
-             (make-sign :phon (cadr (assoc 'phon lex))
-                        :syn (unifier:refresh-vars (cadr (assoc 'syn lex)))
-                        :sem (cadr (assoc 'sem lex)))))
-
-    (do ((count 0 (+ 1 count))
-          (items
-            (handler-case (read-lexicon)
-              (SB-KERNEL::ARG-COUNT-ERROR (e)
-                                          (format t "~%~%~A***BROKEN LEXICON, REVISE and :RELOAD.***~%~%" #\Tab ))
-              (INVALID-FEATURE-VALUE (e)
-                                     (format t "~%~%LEXICON ERROR: ~A is an invalid value for the feature ~A, revise and :reload.~%" (value e) (feature e)))
-              (DEFAULT-FEATURE-OVERRIDE (e)
-                                        (format t "~%~%LEXICON ERROR: ~A attempts to override the default ~A, revise and :reload.~%" (overrider e) (default e)))
-              (BAD-SYNTACTIC-TYPE (e)
-                                  (format t "~%~%LEXICON ERROR: Bad syntactic type: ~A, revise and :reload.~%" (definition e)))
-              (BAD-SEMANTIC-INTERPRETATION (e)
-                                  (format t "~%~%LEXICON ERROR: Bad semantic interpretation: ~A, revise and :reload.~%" (definition e))))
-            (cdr items)))
-        ((endp items) (progn (lexicon :keys) count))
-        (push-item (car items)))))
