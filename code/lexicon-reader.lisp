@@ -351,7 +351,13 @@
                        phons)))
                entries)))
 
-    (let* ((project-data (cl-yaml:parse (uiop:read-file-string (*state* :project))))
+    (let* ((project-data (handler-case (cl-yaml:parse (uiop:read-file-string (*state* :project)))
+                           (YAML.ERROR:PARSING-ERROR (condition)
+                                                    (error (make-condition 'bad-YAML
+                                                                    :file-name (pathname-name (*state* :project))
+                                                                    :message (YAML.ERROR:message condition)
+                                                                    :column (YAML.ERROR:column condition)
+                                                                    :line (YAML.ERROR:line condition))))))
            (feature-dictionary (mapcar #'read-from-string (gethash "feature-dictionary" project-data)))
            (category-bundles (mapcar #'read-from-string (gethash "category-bundles" project-data)))
            (lexicon (gethash "lexicon" project-data))

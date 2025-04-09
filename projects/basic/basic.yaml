@@ -16,7 +16,7 @@
   - (n (cat n) (bar 0))
 
  lexicon:
-  - {pos: n, phon: [john], syn: "np[sg]", sem: lex'}
+  - {pos: n, phon: alex, syn: "np[sg]", sem: lex'}
 
   - pos: n
     syn: np[sg]

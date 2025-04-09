@@ -38,3 +38,18 @@
   ((file-name :initarg :file-name
               :initform nil 
               :reader file-name)))
+
+(define-condition bad-YAML (error)
+  ((file-name :initarg :file-name
+              :initform nil 
+              :reader file-name)
+   (column :initarg :column
+              :initform nil 
+              :reader column)
+   (line :initarg :line
+              :initform nil 
+              :reader line)
+   (message :initarg :message
+              :initform nil 
+              :reader message)))
+
