@@ -16,35 +16,8 @@
 (mapc
   (lambda (name)
     (load (str:concat name ".lisp")))
-  '("service" "conditions" "utils" "unifier" "lc-q" "sr-parser" "syn-parser" "sem-parser" "lexicon-reader" "ccg" "morphology"))
+  '("service" "conditions" "utils" "unifier" "lc-q" "sr-parser" "syn-parser" "sem-parser" "lexicon-reader" "ccg" "morphology" "command-line"))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Command-line options ;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defun default-morphology ()
-  (car (aux:pathnames-by-extension "fst")))
-
-(defun default-project ()
-   (car (aux:pathnames-by-extension "yaml")))
-
-(opts:define-opts
-  (:name :morphology
-   :default #'default-morphology 
-   :description "invoke morphological parsing"
-   :short #\m
-   :long "morphology"
-   :arg-parser #'(lambda (str)
-                   (merge-pathnames (uiop:getcwd) (pathname str)))
-   :meta-var "FST-FILE"
-   )
-  (:name :project
-   :default #'default-project
-   :arg-parser #'(lambda (str)
-                   (merge-pathnames (uiop:getcwd) (pathname str)))
-   :description "project yaml file"
-   :short #\p
-   :long "project"))
 
 
 (setf *print-pretty* t)
@@ -205,22 +178,8 @@
 
 (defun main ()
 
-  (multiple-value-bind (options args)
-    (opts:get-opts)
-    (*state* :morphology (getf options :morphology))
-    (*state* :project (getf options :project))
-    (*state* :project-dir (make-pathname :directory (pathname-directory (*state* :project))))
-    (*state* :project-path (merge-pathnames (let ((cl-pathname (if args
-                                                                   (pathname (car args))
-                                                                   (sb-posix:getcwd))))
-                                                  (if (null (pathname-name cl-pathname))
-                                                      cl-pathname
-                                                      (make-pathname
-                                                       ; :defaults cl-pathname
-                                                        :directory (append
-                                                                     (or (pathname-directory cl-pathname)
-                                                                         (list :relative))
-                                                                     (list (pathname-name cl-pathname)))))))))
+  (run-program "/usr/bin/clear" nil :output *standard-output*)
+  (parse-command-line)
   (*state* :lexicon (aux:multiset-table))
   (handler-case (uiop:chdir (*state* :project-dir))
     (SB-POSIX:SYSCALL-ERROR (err)
@@ -238,10 +197,8 @@
                            (harmonic (harmonic star))
                            (cross (cross star))
                            (dot (harmonic cross star)))))
-  (run-program "/usr/bin/clear" nil :output *standard-output*)
   (format t "Welcome to SmallWorld~%~%A linguists' parser based on CCG~%~%Type :help for help, :quit for quit.~%")
   (format t "~%------------------------------" )
-;   (format t "~%Theory: ~a" (*state* :theory-path))
   (format t "~%Project: ~a" (pathname-name (*state* :project)))
   (format t "~%Loaded ~D items." (load-lexicon))
   (format t "~%------------------------------~%" )
