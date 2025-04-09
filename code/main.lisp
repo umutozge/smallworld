@@ -34,10 +34,9 @@
 
 
 ;; set global switches
-(*state* :eta-normalize nil)
-(*state* :debug-mode nil)
-(*state* :derivation nil)
-(*state* :uniq-parses t)
+(*state* :eta nil)
+(*state* :verbose nil)
+(*state* :uniq t)
 
 
 (defun proc-input (input)
@@ -50,7 +49,7 @@
     ((:help :h)
      (display-help))
     ((:quit :q) (princ "bye, come again!") (terpri) (quit))
-    ((:show-vocab :sv :ls)
+    ((:list-vocab :l)
      (format t "~{~{~10A~^ ~}~%~}" (aux:partition (mapcar
                                                     #'(lambda (x)
                                                         (format nil "~a (~a)" (first x) (second x)))
@@ -64,31 +63,28 @@
                                                       ))
                                                   8))
      (terpri))
-    ((:switch-eta :se)
-     (princ (toggle-flag :eta-normalization)) (terpri))
-    ((:switch-debug-mode :sdm)
-     (princ (toggle-flag :debug-mode)) (terpri))
-    ((:switch-derivation :sd)
-     (princ (toggle-flag :derivation)) (terpri))
-    ((:switch-uniq :su)
-     (princ (toggle-flag :uniq-parses)) (terpri))
+    ((:eta :e)
+     (princ (toggle-flag :eta)) (terpri))
+    ((:verbose :v)
+     (princ (toggle-flag :verbose)) (terpri))
+    ((:uniq :u)
+     (princ (toggle-flag :uniq)) (terpri))
     ((:parse :p)
        (let ((expression (cdr input))) (display-parses expression (parse-expression expression))) (terpri))
     ((:parse-file :pf)
       (parse-file (cadr input)) (terpri))
-    ((:reload :rl) (main))
+    ((:reload :r) (main))
     (read-error (princ "unknown command") (terpri))
     (otherwise (cond ((keywordp (car input)) (princ "unknown command") (terpri))
                      (t (display-parses input (parse-expression input)) (terpri))))))
 
 (defun display-help ()
   (let ((data '((":parse (:p) <expression>" "parse the provided expression")
-                (":show-vocab (:sv)" "display the vocabulary")
-                (":switch-derivation (:sd)" "turn on/off display of derivations")
-                (":switch-eta (:se)" "turn on/off eta-normalization of logical forms")
-                (":switch-uniq (:su)" "turn on/off eliminating semantically spurious parses")
-                (":switch-debug-mode (:sdm)" "turn on/off debug messages")
-                (":reload (:rl)" "reload the system")
+                (":list-vocab (:l)" "display the vocabulary")
+                (":eta (:e)" "turn on/off eta-normalization of logical forms")
+                (":uniq (:u)" "turn on/off eliminating semantically spurious parses")
+                (":verbose (:v)" "verbose output for inspection")
+                (":reload (:r)" "reload the project")
                 (":help (:h)" "help")
                 (":quit (:q)" "quit"))))
   (format t "~%")
@@ -135,10 +131,10 @@
 
                       (format str "~%~%PARSED: ~{~A ~}~%" input-expression)
                       (format str "~%--------------------PARSE ~D--------------------~%" index)
-                      (if (*state* :debug-mode) (format t "~A~%" (caadr item)))
+                      (if (*state* :verbose) (format t "~A~%" (caadr item)))
                       (format str "~%~A~%" (pretty-print :type :sign :format :text :form result))
                       (format str "~%-----------------------------------------------~%")
-                      (when (*state* :derivation)
+                      (when (*state* :verbose)
                         (format str "~%--------------------DERIV ~D--------------------~%" (car item))
                         (format str "~A~%" (aux:maptree #'(lambda (x) (pretty-print :type :sign :format :text :form x)) derivation))
                         (format str "~%------------------------------------------------~%"))))))
@@ -154,7 +150,7 @@
    ((index result derivation)...(index result derivation))"
   (aux:enum
     (funcall
-      (if (*state* :uniq-parses)
+      (if (*state* :uniq)
           #'uniq-parses
           #'identity)
       (handler-case (parse expression)
