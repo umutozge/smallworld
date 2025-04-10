@@ -7,8 +7,8 @@
 
 (defmacro with-debug (expression &key (message "DEBUG:") (transform #'identity))
   `(let ((val ,expression))
-     (when (*state* :debug-mode)
-       (format t "~A~%~%~{~A~%~%~}~%~%" ,message (funcall ,transform val) ))
+     (when (*state* :verbose)
+       (format t "~A~%~{~A~%~}~%" ,message (funcall ,transform val) ))
      val))
 
 (defun pretty-print (&key form type format)

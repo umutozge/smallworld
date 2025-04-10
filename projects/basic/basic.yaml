@@ -16,7 +16,6 @@
   - (n (cat n) (bar 0))
 
  lexicon:
-  - {pos: n, phon: alex, syn: "np[sg]", sem: lex'}
 
   - pos: n
     syn: np[sg]
@@ -24,11 +23,6 @@
     phon:
       - john
       - mary
-
-  - pos: n
-    syn: n[sg]
-    sem: lex' 
-    phon: [dog,cat,spy]
 
   - pos: n
     syn: n[pl]
@@ -59,3 +53,9 @@
     syn: np[agr=?x]/n[agr=?x]
     sem: lex' 
     phon: [the]
+
+  - pos: n
+    syn: n[sg]
+    sem: lex' 
+    phon: [dog,cat,spy]
+

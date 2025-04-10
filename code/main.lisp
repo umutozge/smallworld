@@ -129,14 +129,14 @@
                           (result (caadr item))
                           (derivation (cadr item)))
 
-                      (format str "~%~%PARSED: ~{~A ~}~%" input-expression)
+                      (format str "~%PARSED: ~{~A ~}~%" input-expression)
                       (format str "~%--------------------PARSE ~D--------------------~%" index)
                       (if (*state* :verbose) (format t "~A~%" (caadr item)))
                       (format str "~%~A~%" (pretty-print :type :sign :format :text :form result))
                       (format str "~%-----------------------------------------------~%")
                       (when (*state* :verbose)
                         (format str "~%--------------------DERIV ~D--------------------~%" (car item))
-                        (format str "~A~%" (aux:maptree #'(lambda (x) (pretty-print :type :sign :format :text :form x)) derivation))
+                        (aux:print-binary-tree (aux:maptree #'(lambda (x) (pretty-print :type :sign :format :text :form x)) derivation) 0 2 str)
                         (format str "~%------------------------------------------------~%"))))))
         parses
         )

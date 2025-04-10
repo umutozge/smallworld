@@ -39,6 +39,7 @@
            :maptree
            :tree2avm
            :tree2qtree
+           :print-binary-tree
            :cartesian-product
            :update-alist
            :pathnames-by-extension
@@ -175,6 +176,21 @@
       )
     )
   )
+
+;;;;;;;;;;;;;;;;
+;; TREE UTILS ::
+;;;;;;;;;;;;;;;;
+
+
+(defun print-binary-tree (btree &optional (depth 0) (offset 2) (stream t))
+  "Prints a binary tree in a human-readable format."
+  (cond ((consp btree)
+         (print-binary-tree (car btree) depth) 
+         (print-binary-tree (cadr btree) (+ offset depth))
+         (print-binary-tree (caddr btree) (+ offset depth)))
+        ((null btree) "")
+        ((atom btree)
+         (format stream "~v@T~A~%" depth btree))))
 
 
 ;;;;;;;;;;;;;;;;;;
