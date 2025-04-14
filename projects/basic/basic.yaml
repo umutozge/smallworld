@@ -17,45 +17,42 @@
 
  lexicon:
 
-  - pos: n
+  - pos: pn
     syn: np[sg]
     sem: lex' 
-    phon:
-      - john
-      - mary
+    phon: [john,mary,alex]
+
+  - pos: n
+    syn: n[sg]
+    sem: lex' 
+    phon: [dog,cat,spy,city]
 
   - pos: n
     syn: n[pl]
     sem: lex' 
-    phon: [dogs,cats,spies]
+    phon: [dogs,cats,spies,cities]
 
   - pos: v
     syn: s\np[agr=sg]
     sem: lex' 
-    phon: [talks,walks]
+    phon: [talks,walks,panics]
 
   - pos: v
     syn: s\np[agr=pl]
     sem: lex'
-    phon: [talk,walk]
+    phon: [talk,walk,panic]
 
   - pos: v
     syn: s\np[agr=sg]/np
     sem: lex' 
-    phon: [loves,hates]
+    phon: [chases,likes]
 
   - pos: v
     syn: s\np[agr=pl]/np
     sem: lex' 
-    phon: [love,hate]
+    phon: [chase,like]
 
   - pos: d
     syn: np[agr=?x]/n[agr=?x]
     sem: lex' 
     phon: [the]
-
-  - pos: n
-    syn: n[sg]
-    sem: lex' 
-    phon: [dog,cat,spy]
-

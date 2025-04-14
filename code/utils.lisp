@@ -141,7 +141,7 @@
                              (print-features (feature-list)
                                (if (endp feature-list)
                                    ""
-                                   (format nil "[~{~a~^,~}]" (mapcar #'cadr feature-list))))
+                                   (format nil "[~{~a~^,~}]" (mapcar #'cadr (remove-if #'(lambda (x) (eql (car x) 'cat)) feature-list)))))
                              (find-bundle (form)
                                (let ((bundle (find-if
                                                      #'(lambda (x)

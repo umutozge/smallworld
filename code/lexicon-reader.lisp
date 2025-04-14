@@ -227,7 +227,9 @@
              (equal (car feat) 'fabv))
 
            (variable-p (sym)
-             (char= #\? (aref (symbol-name sym) 0)))
+             (and
+               (symbolp sym)
+               (char= #\? (aref (symbol-name sym) 0))))
 
            (feature-canceller-p (feat)
              (equal (cadr feat) 'fcancel))

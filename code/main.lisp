@@ -175,7 +175,10 @@
 (defun main ()
 
   (run-program "/usr/bin/clear" nil :output *standard-output*)
-  (parse-command-line)
+  (handler-case (parse-command-line)
+    (TYPE-ERROR (condition)
+                (format t "~%~%~%Cannot find a project~%Run samllworld -h for help.~%")
+                (sb-ext:quit)))
   (*state* :lexicon (aux:multiset-table))
   (handler-case (uiop:chdir (*state* :project-dir))
     (SB-POSIX:SYSCALL-ERROR (err)
