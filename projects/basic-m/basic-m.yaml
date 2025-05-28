@@ -1,0 +1,117 @@
+#
+# A sample SmallWorld Project with morphology
+#
+# basic-m.yaml
+#
+---
+
+ feature-dictionary:
+  - (agr pl sg)
+  - (cat v n)
+  - (bar 0 1 2)
+  - (fin + -)
+
+ category-bundles:
+  - (s (cat v)) 
+  - (n (cat n))
+  - (np (cat n) (bar 2))
+
+ lexicon:
+
+  - pos: pn
+    syn: 
+      - s/(s[+]\np[sg])
+      - s\(s/np)
+      - s\np\(s\np/np)
+    sem: \p. p lex' 
+    phon: [john,mary,alex]
+
+  - pos: n
+    syn: n[0]
+    sem: lex' 
+    phon: [dog,cat,spy,city,panic]
+
+  - pos: num
+    syn: n[sg,bar=?x]\*n[bar=?x] 
+    sem: \x.x 
+    phon: [sg]
+
+  - pos: num
+    syn: n[pl,bar=?x]\*n[bar=?x] 
+    sem: \x.x
+    phon: [pl]
+
+  - pos: v
+    syn: s[-]\np
+    sem: lex' 
+    phon: [talk,walk,panic]
+
+  - pos: v
+    syn: s[-]\np/np
+    sem: lex' 
+    phon: [chase,like]
+
+  - pos: tense
+    syn: s[+]\np[agr=?x]\(s[-]\np[agr=?x])
+    sem: \x.x 
+    phon: [pres,past]
+
+  - pos: agr
+    syn: s\np[pl]\(s\np)
+    sem: \x.x 
+    phon: [1p]
+    doc: verbal agreement
+
+  - pos: agr
+    syn: s\np[sg]\(s\np)
+    sem: \x.x 
+    phon: [3p]
+    doc: verbal agreement
+
+  - pos: d
+    syn: 
+      - s/(s\np[agr=?x])/n[agr=?x]
+      - s\(s/np)/n
+    sem: \p\qAx. p x > q x
+    phon: [every]
+
+  - pos: d
+    syn: 
+      - (s\np)\(s\np/np)/n 
+    sem: \p\q\yAx. p x > q x y
+    phon: [every]
+
+  - pos: d
+    syn: 
+      - s/(s\np[agr=?x])/n[agr=?x]
+      - s\(s/np)/n
+    sem: \p\qEx. p x & q x
+    phon: [some,a]
+
+  - pos: d
+    syn: 
+      - (s\np)\(s\np/np)/n 
+    sem: \p\q\yEx. p x & q x y
+    phon: [some,a]
+
+  - pos: d
+    syn: 
+      - s/(s[+]\np[agr=?x])/n[agr=?x]
+      - s\(s/np)/n
+    sem: \p\q~Ex. p x & q x
+    phon: [no]
+
+  - pos: d
+    syn: 
+      - (s\np)\(s\np/np)/n 
+    sem: \p\q\y~Ex. p x & q x y
+    phon: [no]
+
+
+  - pos: d
+    syn:
+      - s/(s[+]\np[agr=?x])/n[agr=?x]
+      - s\(s/np)/n
+      - s\np\(s\np/np)
+    sem: \x\p. p (the'x)
+    phon: [the]
