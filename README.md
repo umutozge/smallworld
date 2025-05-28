@@ -159,9 +159,9 @@ your project folder. This file will be useful to inspect the details of your
 lexicon for debugging purposes.
 
 
-#### Attribute-value matrices
+#### Internal representation of categories
 
-These are basic, intuitive data records. Here is an example:
+Attribute-value matrices are basic, intuitive data records. Here is an example:
 
 ```lisp
 ((title sir)
@@ -182,11 +182,7 @@ The real interest of attribute-value structures lies in their recursive structur
            (color caucasian))))
 ```
 
-
-###### Internal representation of categories
-
-`SmallWorld` translates each category it finds in your `.lex` file to its internal representation, which is written to the file `_lexicon.lisp` each time you load a lexicon.
-
+`SmallWorld` translates each category it finds in your `.yaml` file to its internal representation, which is written to the file `_lexicon.lisp` each time you load a lexicon.
 
 Here is an example lexical entry.
 
@@ -218,5 +214,48 @@ features: `PHON`, `SYN` and `SEM`.
 `SEM` is either an atom like `JOHN` or a lambda term. Inspecting the example lexicon will clarify how to write lambda terms.
 
 `SYN` is a complex feature which has another AVM as its value. For functional categories like `TALKS` above, the value of the `SYN` feature is an AVM with three features: `IN` for the input category, `SLASH` for the directionality, and `OUT` for the output category.
+
+
+#### Invocation
+
+To run `SmallWorld` on a project, you need to specify the project file as a command line argument. For example, if your project file is `myproject.yaml`, you can run:
+
+```bash
+rlwrap smallworld -p myproject.yaml
+```
+
+If you are already in the project directory, you can simply run:
+
+```bash
+rlwrap smallworld
+```
+if you have only one `yaml` file in the folder.
+
+If you don't have `rlwrap`, omit it form the above commands.
+
+If you want morphological parsing, you need to specify the `fst` file using the `-m` option. For example, if your morphological analysis file is `morphology.fst`, you can run:
+
+```bash
+rlwrap smallworld -p myproject.yaml -m morphology.fst
+```
+
+
+#### Commands
+
+Anything you type on the `SmallWorld` REPL will be treated as an expression you want to parse.
+
+Other interactions with `SmallWorld` is through commands that start with a colon `:`. 
+
+Here is a list of available commands:
+
+```
+:list-vocab (:l)         -- display the vocabulary
+:eta (:e)                -- turn on/off eta-normalization of logical forms
+:uniq (:u)               -- turn on/off eliminating semantically spurious parses
+:verbose (:v)            -- verbose output for inspection
+:reload (:r)             -- reload the project
+:help (:h)               -- help
+:quit (:q)               -- quit
+```
 
 </details>
