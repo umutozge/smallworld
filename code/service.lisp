@@ -12,6 +12,7 @@
            :empty-string-p
            :ensure-list
            :enum
+           :counter
            :string-to-list
            :csv-to-str-list
            :list-to-hash-table
@@ -46,6 +47,13 @@
            ))
 
 (in-package aux)
+
+
+(defun counter (&optional (start 0))
+  "Returns a function that returns a counter starting at START."
+  (let ((count start))
+    (lambda ()
+      (setf count (1+ count)))))
 
 
 (defmacro flip-bool (b)

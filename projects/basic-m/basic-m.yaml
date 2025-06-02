@@ -70,14 +70,14 @@
 
   - pos: d
     syn: 
-      - s/(s\np[agr=?x])/n[agr=?x]
+      - s/(s\np[sg])/n[sg]
       - s\(s/np)/n
     sem: \p\qAx. p x > q x
     phon: [every]
 
   - pos: d
     syn: 
-      - (s\np)\(s\np/np)/n 
+      - (s\np)\(s\np/np)/n[sg] 
     sem: \p\q\yAx. p x > q x y
     phon: [every]
 
@@ -86,13 +86,26 @@
       - s/(s\np[agr=?x])/n[agr=?x]
       - s\(s/np)/n
     sem: \p\qEx. p x & q x
-    phon: [some,a]
+    phon: [some]
 
   - pos: d
     syn: 
       - (s\np)\(s\np/np)/n 
     sem: \p\q\yEx. p x & q x y
-    phon: [some,a]
+    phon: [some]
+
+  - pos: d
+    syn: 
+      - s/(s\np[sg])/n[sg]
+      - s\(s/np)/n[sg]
+    sem: \p\qEx. p x & q x
+    phon: [a]
+
+  - pos: d
+    syn: 
+      - (s\np)\(s\np/np)/n[sg] 
+    sem: \p\q\yEx. p x & q x y
+    phon: [a]
 
   - pos: d
     syn: 
@@ -115,3 +128,4 @@
       - s\np\(s\np/np)
     sem: \x\p. p (the'x)
     phon: [the]
+

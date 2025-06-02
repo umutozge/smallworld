@@ -5,6 +5,7 @@
 ;;;
 
 
+
 (defmacro with-debug (expression &key (message "DEBUG:") (transform #'identity))
   `(let ((val ,expression))
      (when (*state* :verbose)
@@ -13,7 +14,10 @@
 
 (defun pretty-print (&key form type format)
   (let ((*logical-constants* '(cond and or equal))
-        (*operators* '(lam forall exists))) 
+        (*operators* '(lam forall exists))
+        (counter (aux:counter 0))
+        (gensymtable (make-hash-table))) 
+    
     (labels 
       ((parse (form)
          "first pass parser
@@ -28,9 +32,19 @@
             (transform-atom (form)
               (cond ((= 1 (aux:symbol-length form)) form)
                     ((aux:gensym-p form)
-                     (concatenate 'string
-                                  "x_"
-                                  (string (aux:symbol-char form (- (aux:symbol-length form) 1)))))
+                     (concatenate
+                       'string
+                       "x_"
+                       (write-to-string
+                         (let ((name (symbol-name form)))
+                           (multiple-value-bind (val exists) (gethash name gensymtable)
+                             (if exists
+                                 val
+                                 (setf (gethash name gensymtable) (funcall counter))))))
+
+                       ;(string (aux:symbol-char form (- (aux:symbol-length form) 1)))
+
+                       ))
                     ((string= (symbol-name form) "NEG") (symbol-name form))
                     (t (concatenate 'string
                                     (symbol-name form)
