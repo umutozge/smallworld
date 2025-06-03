@@ -55,7 +55,7 @@
                  ((atom form) (format nil "~(~A~)" (transform-atom form)))
 
                  ((operator-p (first form))
-                   (format nil "~(~A~) ~(~A~) . ~A"
+                   (format nil "(~(~A~) ~(~A~) . ~A)"
                            (first form)
                            (transform-atom (second form))
                            (parse (third form))))
@@ -65,19 +65,31 @@
                            (parse (second form))
                            (first form)))
                  (t
-                  (let ((parse-of-rest (parse (second form))))
+                  (let ((parse-of-rest (parse (second form)))
+                        (parse-of-first (parse (first form))))
                     (format nil
-                            (if (find #\Space parse-of-rest :test #'equalp)
+                            (if (and
+                                  (find #\Space parse-of-rest :test #'equalp)
+                                  (not (member (first (last (sb-unicode:words parse-of-first))) '("cond" "and" "or") :test #'string=)))
                                 "~A (~A)"
                                 "~A ~A")
-                            (parse (first form))
-                            parse-of-rest))))))   
+                            parse-of-first
+                            (remove-outer-parens parse-of-rest)))))))   
+
+       (remove-outer-parens (text)
+         "remove outer parentheses from a string"
+         (if (and (stringp text)
+                  (> (length text) 2)
+                  (string= (subseq text 0 1) "(")
+                  (string= (subseq text (- (length text) 1)) ")"))
+             (subseq text 1 (- (length text) 1))
+             text))
 
        (finisher (text)
          (let ((patterns '(("\\( " "(")
                            (" \\)" ")")
-                           ("^\\(" " ")
-                           ("\\)$" " ")
+;                            ("^\\(" " ")
+;                            ("\\) +$" " ")
                            )))
            (do ((current text (re:regex-replace-all (caar pats) current (cadar pats)))
                 (pats patterns (cdr pats)))

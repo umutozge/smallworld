@@ -120,7 +120,6 @@
     sem: \p\q\y~Ex. p x & q x y
     phon: [no]
 
-
   - pos: d
     syn:
       - s/(s[+]\np[agr=?x])/n[agr=?x]

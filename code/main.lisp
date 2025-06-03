@@ -131,7 +131,7 @@
 
                       (format str "~%PARSED: ~{~A ~}~%" input-expression)
                       (format str "~%--------------------PARSE ~D--------------------~%" index)
-                      ;(if (*state* :verbose) (format t "~A~%" (caadr item)))
+                      (if (*state* :verbose) (format t "~A~%" (sign-sem (caadr item))))
                       (format str "~%~A~%" (pretty-print :type :sign :format :text :form result))
                       (format str "~%-----------------------------------------------~%")
                       (when (*state* :verbose)
