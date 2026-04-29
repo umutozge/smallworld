@@ -84,11 +84,14 @@
                              (error (make-condition 'bad-syntactic-type
                                                     :definition syn))
                              syn-cat))
-                       (let ((sem-interp (lalr-parse-tokens (sem-tokenizer sem) *sem-parser* sem-lexicon)))
-                         (if (typep sem-interp 'string)
-                             (error (make-condition 'bad-semantic-interpretation
-                                                    :definition sem))
-                             sem-interp))
+                       (multiple-value-bind (sem-tokens sem-overlay) (sem-tokenizer sem)
+                         (let ((sem-interp (lalr-parse-tokens sem-tokens
+                                                              *sem-parser*
+                                                              (append sem-overlay sem-lexicon))))
+                           (if (typep sem-interp 'string)
+                               (error (make-condition 'bad-semantic-interpretation
+                                                      :definition sem))
+                               sem-interp)))
                        phons)))
                entries)))
 

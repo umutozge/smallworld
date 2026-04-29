@@ -6,9 +6,15 @@
 ;;;   * SEM-TRANSLATOR -- maps lexical-form symbols (an, or, cn, ...)
 ;;;     to the logical-form connective names used in lambda terms.
 ;;;   * SEM-LEXICON -- the static token-class alist used to drive the
-;;;     LALR parser.
+;;;     LALR parser.  Lower-case identifiers found in a particular
+;;;     semantics string (constants and variables) are NOT pushed into
+;;;     this global; SEM-TOKENIZER returns them as a per-call overlay
+;;;     instead, which keeps each parse self-contained.
 ;;;   * SEM-TOKENIZER -- hand-rolled tokenizer for semantic strings
-;;;     like `\x. dog x`.
+;;;     like `\x. dog x`.  Returns two values: the token list and an
+;;;     overlay alist of `(symbol class)` entries (class is VAR for
+;;;     single-letter identifiers, NAME otherwise) for the caller to
+;;;     merge into the lexicon for this one parse.
 ;;;   * SEM-GRAMMAR -- the CFG for semantic interpretations, with
 ;;;     reduce actions that build the lambda-term internal
 ;;;     representation.
@@ -46,38 +52,41 @@
                             ($ $)))
 
 (defun sem-tokenizer (sem)
-  "tokenize the semantics given as string"
+  "Tokenize the semantics given as string.
+
+   Returns two values:
+     1. the list of tokens (symbols and integers, end-marker not appended);
+     2. an alist overlay of identifier classes -- entries of the form
+        (SYMBOL VAR) for single-letter identifiers and (SYMBOL NAME) for
+        longer ones -- that the caller merges with SEM-LEXICON for this
+        one parse.  No global state is mutated."
   (let ((store nil)
+        (overlay nil)
         (word-buffer (make-string 100))
         (pos 0))
-    (do ((index 0 (+ index 1)))
-        ((= index (length sem))
-         (remove-if #'null
-                    (reverse
-                      (if (zerop pos)
-                          store
-                          (cons
-                            (let* ((word (string-upcase (subseq word-buffer 0 pos)))
-                                   (symb (intern word)))
-                                  (push (list symb (if (= (length word) 1) 'var 'name)) sem-lexicon)
-                                  symb)
-                            store)))))
+    (labels ((flush-word ()
+               (when (plusp pos)
+                 (let* ((word (string-upcase (subseq word-buffer 0 pos)))
+                        (int? (parse-integer word :junk-allowed t)))
+                   (push
+                     (or int?
+                         (let ((symb (intern word)))
+                           (push (list symb (if (= (length word) 1) 'var 'name)) overlay)
+                           symb))
+                     store)
+                   (setf pos 0)))))
+      (do ((index 0 (+ index 1)))
+          ((= index (length sem))
+           (flush-word)
+           (values (remove-if #'null (reverse store)) overlay))
         (let ((current-char (char sem index)))
-          (if (or (and (alpha-char-p current-char) (lower-case-p current-char)) (digit-char-p current-char))
+          (if (or (and (alpha-char-p current-char) (lower-case-p current-char))
+                  (digit-char-p current-char))
               (progn
                 (setf (aref word-buffer pos) current-char)
                 (incf pos))
               (progn
-                (if (not (zerop pos))
-                    (let* ((word (string-upcase (subseq word-buffer 0 pos)))
-                           (int? (parse-integer word :junk-allowed t)))
-                      (push
-                        (or int?
-                            (let ((symb (intern word)))
-                                  (push (list symb (if (= (length word) 1) 'var 'name)) sem-lexicon)
-                              symb))
-                        store)
-                      (setf pos 0)))
+                (flush-word)
                 (push
                   (case current-char
                     (#\( 'OP)
@@ -94,9 +103,8 @@
                     (#\< 'LT)
                     (#\E 'EX)
                     (#\A 'UN)
-                    (#\' 'PR)
-                    )
-                  store)))))))
+                    (#\' 'PR))
+                  store))))))))
 
 (defparameter sem-grammar
         '((for --> pred                 #'(lambda (pr) pr))
