@@ -2,6 +2,7 @@
 ;(declaim (sb-ext:muffle-conditions cl:warning))
 (sb-ext:enable-debugger)
 
+
 (load (merge-pathnames ".sbclrc" (user-homedir-pathname)))
 (ql:quickload :uiop :silent t)
 (ql:quickload :str :silent t)
@@ -26,7 +27,7 @@
 (setf  (symbol-function '*state*)
        (let ((table (make-hash-table)))
          #'(lambda (key &optional (value '<NULL>))
-             (if (not (equal value '<NULL>) )
+             (if (not (equal value '<NULL>))
                  (setf (gethash key table) value)
                  (multiple-value-bind (val status)
                    (gethash key table)
@@ -59,8 +60,8 @@
                                                             (list (lexkey-phon lexkey) (lexkey-pos lexkey)))
                                                         (*state* 'vocab))
                                                       #'string<
-                                                      :key #'(lambda (x) (symbol-name (second x)))
-                                                      ))
+                                                      :key #'(lambda (x) (symbol-name (second x)))))
+                                                      
                                                   8))
      (terpri))
     ((:eta :e)
@@ -70,9 +71,9 @@
     ((:uniq :u)
      (princ (toggle-flag :uniq)) (terpri))
     ((:parse :p)
-       (let ((expression (cdr input))) (display-parses expression (parse-expression expression))) (terpri))
-    ((:parse-file :pf)
-      (parse-file (cadr input)) (terpri))
+     (let ((expression (cdr input))) (display-parses expression (parse-expression expression))) (terpri))
+    ((:file :f)
+     (parse-file (cadr input)) (terpri))
     ((:reload :r) (main))
     (read-error (princ "unknown command") (terpri))
     (otherwise (cond ((keywordp (car input)) (princ "unknown command") (terpri))
@@ -80,6 +81,7 @@
 
 (defun display-help ()
   (let ((data '((":parse (:p) <expression>" "parse the provided expression")
+                (":file (:f)" "parse the expressions in the given file")
                 (":list-vocab (:l)" "display the vocabulary")
                 (":eta (:e)" "turn on/off eta-normalization of logical forms")
                 (":uniq (:u)" "turn on/off eliminating semantically spurious parses")
@@ -87,9 +89,9 @@
                 (":reload (:r)" "reload the project")
                 (":help (:h)" "help")
                 (":quit (:q)" "quit"))))
-  (format t "~%")
-  (format t "~{~{~24A~^ -- ~} ~%~}" data)
-  (format t "~%")))
+   (format t "~%")
+   (format t "~{~{~24A~^ -- ~} ~%~}" data)
+   (format t "~%")))
 
 (defun parse-file (filename)
   (let* ((inpath (merge-pathnames (string-downcase filename)))
@@ -105,19 +107,19 @@
                                                         ((null sentence) store))))))
                       (FILE-DOES-NOT-EXIST (err)
                                            (format t "~%The file ~A cannot be found.~%~%Check path and make sure to avoid capital letters and spaces in your filenames.~%" (namestring inpath))
-                                           (return-from parse-file 0)
-                                           ))))
+                                           (return-from parse-file 0)))))
+                                           
 
     (if (probe-file outpath) (delete-file outpath))
 
     (with-open-file (str outpath :direction :output
                          :if-does-not-exist :create
                          :if-exists :overwrite)
-      (format t "Parsing ~A.~% Abort with Ctrl-C.~%" outpath)
+      (format t "Parsing ~A~% Abort with Ctrl-C ...~%" outpath)
       (dolist (i sentences)
         (display-parses i (parse-expression i) str))
-      (format t "~%Output written to ~A.~%" (namestring outpath))
-      )))
+      (format t "~%Output written to ~A~%" (namestring outpath)))))
+      
 
 (defun display-parses (input-expression parses &optional (str t))
   (if parses
@@ -134,16 +136,18 @@
                       (if (*state* :verbose) (format t "~A~%" (sign-sem (caadr item))))
                       (format str "~%~A~%" (pretty-print :type :sign :format :text :form result))
                       (format str "~%-----------------------------------------------~%")
+                      (format str "~%~A~%" (pretty-print :type :sem :format :tex :form result))
+                      (format str "~%-----------------------------------------------~%")
                       (when (*state* :verbose)
                         (format str "~%--------------------DERIV ~D--------------------~%" (car item))
-                        (aux:print-binary-tree (aux:maptree #'(lambda (x) (pretty-print :type :sign :format :text :form x)) derivation) 0 2 str)
+                        (aux:print-binary-tree (aux:maptree #'(lambda (x) (pretty-print :type :sign :format :tex :form x)) derivation) 0 2 str)
                         (format str "~%------------------------------------------------~%"))))))
-        parses
-        )
+        parses)
+        
 
-        (format str "~%*~{~A~^ ~}~%" input-expression) ; FAILURE
+      (format str "~%*~{~A~^ ~}~%" input-expression))) ; FAILURE
 
-      ))
+      
 
 (defun parse-expression (expression)
   "return a numeration of parse
@@ -183,9 +187,9 @@
   (handler-case (uiop:chdir (*state* :project-dir))
     (SB-POSIX:SYSCALL-ERROR (err)
                             (format t "~%Cannot find ~A~%~%" (*state* :project))
-                            (sb-ext:quit)
-                            )
-    )
+                            (sb-ext:quit)))
+                            
+    
 
   (*state* :prompt (pathname-name (*state* :project)))
   (*state* :debug-lexicon-path (make-pathname :name "_lexicon" :type "lisp" :directory (pathname-directory (*state* :project-dir))))
@@ -197,7 +201,7 @@
                            (cross (cross star))
                            (dot (harmonic cross star)))))
   (format t "Welcome to SmallWorld~%~%A linguists' parser based on CCG~%~%Type :help for help, :quit for quit.~%")
-  (format t "~%------------------------------" )
+  (format t "~%------------------------------")
   (format t "~%Project: ~a" (pathname-name (*state* :project)))
   (format t "~%Loaded ~D items." (handler-case (load-lexicon)
                                    (BAD-YAML (condition)
@@ -207,11 +211,11 @@
                                                      (line condition)
                                                      (message condition))
                                              0)))
-  (format t "~%------------------------------~%" )
+  (format t "~%------------------------------~%")
   (*state* :morph-analyzer (handler-case (make-morph-analyzer)
-                                                       (MISSING-MORPH-FILE (e)
-                                                                           (format t "~%Cannot find an ~A.fst or ~A.mrf, aborting..~%~%" (file-name e) (file-name e))
-                                                                           (sb-ext:quit))))
+                                         (MISSING-MORPH-FILE (e)
+                                                             (format t "~%Cannot find an ~A.fst or ~A.mrf, aborting..~%~%" (file-name e) (file-name e))
+                                                             (sb-ext:quit))))
   (*state* 'vocab (funcall (*state* :lexicon) :keys))
   (format t "~%")
   (loop

@@ -32,6 +32,7 @@
     (un 'forall)
     (lm 'lam)
     (ng 'neg)
+    (lt 'prec)
     (eq 'equal)
     ))
 
@@ -48,6 +49,7 @@
                             (or bcon)
                             (cn bcon)
                             (eq bcon)
+                            (lt bcon)
                             (ng ucon)
                             (pr prime)
                             ($ $)))
@@ -98,6 +100,7 @@
                     (#\~ 'NG)
                     (#\. 'DT)
                     (#\= 'EQ)
+                    (#\< 'LT)
                     (#\E 'EX)
                     (#\A 'UN)
                     (#\' 'PR)
@@ -127,7 +130,7 @@
         )
 
 (defparameter sem-lexforms
-  '(ob cb op cp eq dt opr bcon ucon prime name var))
+  '(ob cb op cp eq lt dt opr bcon ucon prime name var))
 
 (eval (sem-parser:make-parser sem-grammar sem-lexforms '$))
 

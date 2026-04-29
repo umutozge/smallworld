@@ -9,20 +9,20 @@
 (defmacro with-debug (expression &key (message "DEBUG:") (transform #'identity))
   `(let ((val ,expression))
      (when (*state* :verbose)
-       (format t "~A~%~{~A~%~}~%" ,message (funcall ,transform val) ))
+       (format t "~A~%~{~A~%~}~%" ,message (funcall ,transform val)))
      val))
 
 (defun pretty-print (&key form type format)
-  (let ((*logical-constants* '(cond and or equal))
+  (let ((*logical-constants* '(cond and or equal prec))
         (*operators* '(lam forall exists))
         (counter (aux:counter 0))
-        (gensymtable (make-hash-table))) 
-    
-    (labels 
+        (gensymtable (make-hash-table)))
+
+    (labels
       ((parse (form)
          "first pass parser
           sexp --> string"
-         (labels 
+         (labels
            ((logical-constant-p (form)
               (member form *logical-constants*))
 
@@ -40,11 +40,11 @@
                            (multiple-value-bind (val exists) (gethash name gensymtable)
                              (if exists
                                  val
-                                 (setf (gethash name gensymtable) (funcall counter))))))
+                                 (setf (gethash name gensymtable) (funcall counter))))))))
 
                        ;(string (aux:symbol-char form (- (aux:symbol-length form) 1)))
 
-                       ))
+                       
                     ((string= (symbol-name form) "NEG") (symbol-name form))
                     (t (concatenate 'string
                                     (symbol-name form)
@@ -55,15 +55,15 @@
                  ((atom form) (format nil "~(~A~)" (transform-atom form)))
 
                  ((operator-p (first form))
-                   (format nil "(~(~A~) ~(~A~) . ~A)"
-                           (first form)
-                           (transform-atom (second form))
-                           (parse (third form))))
+                  (format nil "(~(~A~) ~(~A~) . ~A)"
+                          (first form)
+                          (transform-atom (second form))
+                          (parse (third form))))
 
                  ((logical-constant-p (first form))
-                   (format nil "~A ~(~A~)"
-                           (parse (second form))
-                           (first form)))
+                  (format nil "~A ~(~A~)"
+                          (parse (second form))
+                          (first form)))
                  (t
                   (let ((parse-of-rest (parse (second form)))
                         (parse-of-first (parse (first form))))
@@ -74,7 +74,7 @@
                                 "~A (~A)"
                                 "~A ~A")
                             parse-of-first
-                            (remove-outer-parens parse-of-rest)))))))   
+                            (remove-outer-parens parse-of-rest)))))))
 
        (remove-outer-parens (text)
          "remove outer parentheses from a string"
@@ -87,43 +87,44 @@
 
        (finisher (text)
          (let ((patterns '(("\\( " "(")
-                           (" \\)" ")")
+                           (" \\)" ")"))))
 ;                            ("^\\(" " ")
 ;                            ("\\) +$" " ")
-                           )))
+                           
            (do ((current text (re:regex-replace-all (caar pats) current (cadar pats)))
                 (pats patterns (cdr pats)))
                ((null pats) current))))
-       
+
        (variable-p (form)
          (and (symbolp form) (char= (char (symbol-name form) 0) #\?)))
-       
+
        (sem-to-text (form)
          "lf to text printer"
          (finisher (apply
-           #'concatenate
-           'string
-           (let ((table `(("forall" . ,(string #\U2200))
-                          ("exists" . ,(string #\U2203))
-                          ("and"    . ,(concatenate 'string " " (string #\U2227) " "))
-                          ("neg"    . ,(concatenate 'string " " (string #\U223C) " "))
-                          ("or"     . ,(concatenate 'string " " (string #\U2228) " "))
-                          ("cond"   . ,(concatenate 'string " " (string #\U2283) " "))
-                          ("equal"  . ,(concatenate 'string " " (string #\=) " "))
-                          ("lam"    . ,(string #\U1D6CC)))
-                        ))
-             (mapcar
-               #'(lambda (x)
-                   (let ((match (assoc x table :test #'string-equal)))
-                     (cond (match (rest match))
-                           ((or (string= x "'") (string= x ".")) x)
-                           ((= 1 (length x)) (concatenate 'string x " "))
-                           ((and (= 3 (length x)) (char= (aref x 1) #\_))
-                            (concatenate 'string x ""))
-                           (t x))))
-               (remove-if
-                         #'(lambda (x) (string= x " "))
-                         (sb-unicode:words (parse form))))))))
+                    #'concatenate
+                    'string
+                    (let ((table `(("forall" . ,(string #\U2200))
+                                   ("exists" . ,(string #\U2203))
+                                   ("and"    . ,(concatenate 'string " " (string #\U2227) " "))
+                                   ("neg"    . ,(concatenate 'string " " (string #\U223C) " "))
+                                   ("or"     . ,(concatenate 'string " " (string #\U2228) " "))
+                                   ("cond"   . ,(concatenate 'string " " (string #\U2283) " "))
+                                   ("prec"     . ,(concatenate 'string " " (string #\U227A) " "))
+                                   ("equal"  . ,(concatenate 'string " " (string #\=) " "))
+                                   ("lam"    . ,(string #\U1D6CC)))))
+                        
+                      (mapcar
+                        #'(lambda (x)
+                            (let ((match (assoc x table :test #'string-equal)))
+                              (cond (match (rest match))
+                                    ((or (string= x "'") (string= x ".")) x)
+                                    ((= 1 (length x)) (concatenate 'string x " "))
+                                    ((and (= 3 (length x)) (char= (aref x 1) #\_))
+                                     (concatenate 'string x ""))
+                                    (t x))))
+                        (remove-if
+                                  #'(lambda (x) (string= x " "))
+                                  (sb-unicode:words (parse form))))))))
 
        (sem-to-tex (form)
                    "lf to tex printer"
@@ -136,9 +137,10 @@
                                     ("neg"    . "\\neg")
                                     ("or"     . "\\lor")
                                     ("cond"   . "\\rightarrow")
+                                    ("prec"   . "\\prec")
                                     ("equal"   . "=")
-                                    ("lam"    . "\\lambda"))
-                                  ))
+                                    ("lam"    . "\\lambda"))))
+                                  
                        (mapcar
                          #'(lambda (x)
                              (let ((match (assoc x table :test #'string-equal)))
@@ -192,29 +194,29 @@
 
                       ;BODY
                       (cond ((functor-p form)
-                              (format nil "(~A~A~A)"
-                                      (syn-to-text (second (assoc 'out form)))
-                                      (print-slash (second (assoc 'slash form)))
-                                      (syn-to-text (second (assoc 'in form)))))
-                            ((atomic-p form) (print-atom form))
-                            )))
+                             (format nil "(~A~A~A)"
+                                     (syn-to-text (second (assoc 'out form)))
+                                     (print-slash (second (assoc 'slash form)))
+                                     (syn-to-text (second (assoc 'in form)))))
+                            ((atomic-p form) (print-atom form)))))
+
 
        (sign-to-text (sign)
                      (string-downcase (format nil "[~A = ~A : ~A]"
                                               (sign-phon sign)
                                               (finisher (syn-to-text (sign-syn sign)))
                                               (sem-to-text (sign-sem sign))))))
-      
-        (funcall 
-            (case type 
-              (:sem (case format
-                      (:tex #'sem-to-tex) 
-                      (:text #'sem-to-text)))
-              (:syn (case format
-                      (:tex #'identity) 
-                      (:text #'syn-to-text)))
-              (:sign (case format
-                      (:tex #'identity) 
-                      (:text #'sign-to-text)))
-              )
-            form))))
+
+      (case type
+            (:sem (funcall
+                    (case format
+                      (:tex #'sem-to-tex)
+                      (:text #'sem-to-text))
+                    (sign-sem form)))
+            (:syn (syn-to-text (sign-syn form)))
+            (:sign (sign-to-text form))))))
+
+a  (bye
+     print (acc)
+     a ) b
+
