@@ -19,6 +19,42 @@
 ;;;     lexicon used downstream by the CCG module.
 ;;;
 
+(defun intern-yaml-token (str)
+  "Convert a YAML scalar (a string carrying a single identifier such as
+   \"noun\", \"dog\" or \"sg\") into the corresponding upcased symbol.
+
+   This used to go through READ-FROM-STRING, which is unsafe -- a
+   crafted YAML scalar like \"#.(...)\" or \"#+sbcl ...\" could trigger
+   read-time evaluation or feature-conditional reading.  INTERN does
+   the symbol creation we actually need without invoking the reader."
+  (check-type str string)
+  (intern (string-upcase (string-trim '(#\Space #\Tab #\Newline #\Return) str))))
+
+(defun safe-read-sexp-from-string (str)
+  "READ-FROM-STRING with the reader hardened against side-effects:
+     * *READ-EVAL* is bound to NIL so #. is rejected;
+     * the readtable is COPY-READTABLE'd from the standard table so any
+       project-loaded reader macros (e.g. cl-yaml's, named-readtables')
+       cannot influence the parse;
+     * we read with EOF-ERROR-P NIL and signal a clean error if any
+       trailing forms remain (so \"foo bar\" doesn't silently lose bar).
+
+   Use this only for YAML scalars whose contents are genuine
+   s-expressions, e.g. category-bundle entries like \"(np (cat n))\"."
+  (check-type str string)
+  (let ((*read-eval* nil)
+        (*readtable* (copy-readtable nil)))
+    (with-input-from-string (in str)
+      (let* ((eof (load-time-value (cons nil nil)))
+             (form (read in nil eof))
+             (rest (read in nil eof)))
+        (when (eq form eof)
+          (error "safe-read-sexp-from-string: empty input ~S" str))
+        (unless (eq rest eof)
+          (error "safe-read-sexp-from-string: trailing data after ~S in ~S"
+                 form str))
+        form))))
+
 (defun lalr-parse-tokens (tokens parser lookup)
   "Drive PARSER (a closure from LALR:MAKE-PARSER) over the list of
    TOKENS, classifying each via LOOKUP (an alist of (token . category)).
@@ -39,7 +75,7 @@
              (let ((store nil))
                (maphash 
                  #'(lambda (k v) 
-                     (push (list (read-from-string k) v) store))
+                     (push (list (intern-yaml-token k) v) store))
                  lex-ht)
                store)) 
 
@@ -61,8 +97,8 @@
              (let ((phon (gethash "phon" lex-ht)))
                (setf (gethash "phon" lex-ht)
                      (if (stringp phon)
-                         (list (read-from-string phon))
-                         (mapcar #'read-from-string phon)))
+                         (list (intern-yaml-token phon))
+                         (mapcar #'intern-yaml-token phon)))
                lex-ht))
 
            (build-entry (pos syn sem phon)
@@ -78,7 +114,7 @@
                      (pos syn sem phons)
                      entry
                      (list
-                       (read-from-string pos)
+                       (intern-yaml-token pos)
                        (let ((syn-cat (lalr-parse-tokens (syn-lexer syn) *syn-parser* syn-lexicon)))
                          (if (typep syn-cat 'string)
                              (error (make-condition 'bad-syntactic-type
@@ -102,8 +138,12 @@
                                                                     :message (YAML.ERROR:message condition)
                                                                     :column (YAML.ERROR:column condition)
                                                                     :line (YAML.ERROR:line condition))))))
-           (feature-dictionary (mapcar #'read-from-string (gethash "feature-dictionary" project-data)))
-           (category-bundles (mapcar #'read-from-string (gethash "category-bundles" project-data)))
+           ;; feature-dictionary and category-bundles are *true* s-expr
+           ;; payloads (e.g. "(agr pl sg)" or "(np (cat n) (bar 2))"),
+           ;; so we still have to read them -- but with *read-eval* off
+           ;; and a fresh readtable to keep the read side-effect-free.
+           (feature-dictionary (mapcar #'safe-read-sexp-from-string (gethash "feature-dictionary" project-data)))
+           (category-bundles   (mapcar #'safe-read-sexp-from-string (gethash "category-bundles" project-data)))
            (lexicon (gethash "lexicon" project-data))
            (entries 
              (mapcar
