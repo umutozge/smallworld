@@ -2,24 +2,21 @@
 ;(declaim (sb-ext:muffle-conditions cl:warning))
 (sb-ext:enable-debugger)
 
+;; The project's source files (service.lisp .. command-line.lisp) and
+;; its third-party dependencies (str, cl-ppcre, unix-opts, cl-lex,
+;; cl-yaml, alexandria) are now declared in smallworld.asd at the
+;; project root and loaded by ASDF before this file runs.  See
+;; install.lisp for the install-time entry point that arranges that.
+;;
+;; The CL-PPCRE nicknames PPCRE and RE were established by an explicit
+;; rename-package in earlier versions of this file.  We do that here in
+;; an idempotent way so a fresh ASDF load picks them up:
 
-(load (merge-pathnames ".sbclrc" (user-homedir-pathname)))
-(ql:quickload :uiop :silent t)
-(ql:quickload :str :silent t)
-(ql:quickload :cl-ppcre :silent t)
-(ql:quickload :unix-opts :silent t)
-(ql:quickload :cl-lex :silent t)
-(ql:quickload :cl-yaml :silent t)
-(ql:quickload :alexandria :silent t)
-(rename-package "CL-PPCRE" "CL-PPCRE" '("PPCRE" "RE"))
-
-;; load the components
-(mapc
-  (lambda (name)
-    (load (str:concat name ".lisp")))
-  '("service" "conditions" "utils" "unifier" "lc-q" "sr-parser" "lalr" "category-expand" "syn-grammar" "sem-grammar" "lexicon-reader" "ccg" "morphology" "command-line"))
-
-
+(when (find-package "CL-PPCRE")
+  (dolist (nick '("PPCRE" "RE"))
+    (unless (find-package nick)
+      (rename-package "CL-PPCRE" "CL-PPCRE"
+                      (cons nick (package-nicknames "CL-PPCRE"))))))
 
 (setf *print-pretty* t)
 

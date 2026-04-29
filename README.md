@@ -51,6 +51,18 @@ then
 (ql:add-to-init-file)
 ```
 
+`SmallWorld` itself is defined as an ASDF system (`smallworld.asd` at
+the project root); the install script registers that system and asks
+Quicklisp to load it, which transparently fetches the third-party
+dependencies (`str`, `cl-ppcre`, `unix-opts`, `cl-lex`, `cl-yaml`,
+`alexandria`).  If you'd rather load the system into a running Lisp
+for experimentation, run:
+
+```lisp
+(push (truename #p"/path/to/smallworld/") asdf:*central-registry*)
+(ql:quickload :smallworld)
+```
+
 #### Fetch the program to your system
 
 
