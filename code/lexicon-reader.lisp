@@ -1,23 +1,26 @@
 ;;;
 ;;; Module for parsing CCG syn-grammars into lexicons
 ;;;
-
+;;; Two grammars are defined here -- one for syntactic categories,
+;;; one for semantic interpretations -- and each is compiled into a
+;;; parser closure via LALR:MAKE-PARSER (see code/lalr.lisp).  Earlier
+;;; versions of SmallWorld carried two near-identical copies of Mark
+;;; Johnson's LALR generator (in packages SYN-PARSER and SEM-PARSER) to
+;;; work around its module-level globals; that duplication is gone.
 ;;;
-;;;
 
-(defmacro lalr-parse (words with parser-package-name)
-  `(let ((new-words (append ,words (list '$))))
-    (labels ((lookup (word)
-               (cadr (assoc word ,(intern (concatenate 'string (subseq (symbol-name parser-package-name) 0 4) "LEXICON")))))
-             (next-input ()
-               (let* ((word (pop new-words))
-                      (cat (lookup word)))
-                 (cons cat                  ; category
-                       (list cat word))))   ; value
+(defun lalr-parse-tokens (tokens parser lookup)
+  "Drive PARSER (a closure from LALR:MAKE-PARSER) over the list of
+   TOKENS, classifying each via LOOKUP (an alist of (token . category)).
+   The trailing $ end-marker is appended automatically."
+  (let ((words (append tokens (list '$))))
+    (labels ((next-input ()
+               (let* ((word (pop words))
+                      (cat (cadr (assoc word lookup))))
+                 (cons cat (list cat word))))
              (parse-error ()
-               (format nil "Error before ~a" new-words)))
-      (,(intern "LALR-PARSER" parser-package-name)
-         #'next-input #'parse-error))))
+               (format nil "Error before ~a" words)))
+      (funcall parser #'next-input #'parse-error))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;;;   Sem Parsing   ;;;
@@ -132,7 +135,7 @@
 (defparameter sem-lexforms
   '(ob cb op cp eq lt dt opr bcon ucon prime name var))
 
-(eval (sem-parser:make-parser sem-grammar sem-lexforms '$))
+(defparameter *sem-parser* (lalr:make-parser sem-grammar sem-lexforms '$))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -204,7 +207,7 @@
 (defparameter syn-lexforms
   '(acat ob cb op cp slash sm eq fname fval))
 
-(eval (syn-parser:make-parser syn-grammar syn-lexforms '$))
+(defparameter *syn-parser* (lalr:make-parser syn-grammar syn-lexforms '$))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -343,12 +346,12 @@
                      entry
                      (list
                        (read-from-string pos)
-                       (let ((syn-cat (lalr-parse (syn-lexer syn) with :syn-parser)))
+                       (let ((syn-cat (lalr-parse-tokens (syn-lexer syn) *syn-parser* syn-lexicon)))
                          (if (typep syn-cat 'string)
                              (error (make-condition 'bad-syntactic-type
                                                     :definition syn))
                              syn-cat))
-                       (let ((sem-interp (lalr-parse (sem-tokenizer sem) with :sem-parser)))
+                       (let ((sem-interp (lalr-parse-tokens (sem-tokenizer sem) *sem-parser* sem-lexicon)))
                          (if (typep sem-interp 'string)
                              (error (make-condition 'bad-semantic-interpretation
                                                     :definition sem))

@@ -17,7 +17,7 @@
 (mapc
   (lambda (name)
     (load (str:concat name ".lisp")))
-  '("service" "conditions" "utils" "unifier" "lc-q" "sr-parser" "syn-parser" "sem-parser" "lexicon-reader" "ccg" "morphology" "command-line"))
+  '("service" "conditions" "utils" "unifier" "lc-q" "sr-parser" "lalr" "lexicon-reader" "ccg" "morphology" "command-line"))
 
 
 
