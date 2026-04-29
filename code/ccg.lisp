@@ -172,25 +172,80 @@
                        name))
                  (symbol-name direction))))
 
+(defun canonicalize-syn (syn)
+  "Walk SYN and replace gensym variables (anything matching
+   UNIFIER::VARIABLEP) with stable ?V0, ?V1, ... in left-to-right
+   traversal order.  Two refresh'd copies of the same lexical entry
+   become EQUAL once canonicalized; this is the precondition for any
+   cache keyed on a sign's syn."
+  (let ((table (make-hash-table :test 'eq))
+        (counter -1))
+    (labels ((walk (x)
+               (cond
+                 ((unifier::variablep x)
+                  (or (gethash x table)
+                      (setf (gethash x table)
+                            (intern (format nil "?V~D" (incf counter))))))
+                 ((consp x) (cons (walk (car x)) (walk (cdr x))))
+                 (t x))))
+      (walk syn))))
+
+(defparameter *combine-no-go-marker* '#:no-go
+  "Sentinel value distinguishing a cached negative result from an
+   absent entry, so that GETHASH's two-value protocol still works.")
+
+(defun combine-no-go-cache ()
+  "The cache of (canonical-lsyn . canonical-rsyn) pairs that we have
+   already proven do not combine.  Lazily attached to the project
+   state so that :reload clears it."
+  (or (*state* :combine-no-go-cache)
+      (*state* :combine-no-go-cache (make-hash-table :test 'equal))))
+
+(defun combine-uncached (left right)
+  "The unmemoized core of COMBINE.  Returns a sign or NIL."
+  (let* ((lsyn (sign-syn left))
+         (rsyn (sign-syn right))
+         (result (or (c-apply lsyn rsyn)
+                     (c-compose lsyn rsyn))))
+    (when result
+      (let ((syn (first result))
+            (direction (second result))
+            (combinator (third result)))
+        (make-sign
+          :phon (cons (get-deco direction combinator)
+                      (cons (sign-phon left)
+                            (list (sign-phon right))))
+          :syn syn
+          :sem (s-combine left right direction combinator))))))
+
 (defun combine (left right)
-  "return the combination of signs, or nil if not combinable
+  "Return the combination of signs, or NIL if they don't combine.
    Sign -> Sign
-   "
-  (let ((lsyn (sign-syn left)) (rsyn (sign-syn right)))
-    (let ((result
-            (or
-              (c-apply lsyn rsyn)
-              (c-compose lsyn rsyn))))
-      (if result
-          (let ((syn (first result))
-                (direction (second result))
-                (combinator (third result)))
-            (make-sign
-              :phon (cons (get-deco direction combinator)
-                          (cons (sign-phon left)
-                                (list (sign-phon right))))
-              :syn syn
-              :sem (s-combine left right direction combinator)))))))
+
+   When (*STATE* :MEMOIZE) is set, we cache *negative* results --
+   pairs of canonical syn structures that have been proven not to
+   combine -- in (*STATE* :COMBINE-NO-GO-CACHE).  Successful
+   combinations are not cached, because rebuilding the output's fresh
+   gensym variables from a canonical template is delicate and
+   successes are rare in practice.  In a typical SmallWorld parse the
+   overwhelming majority of (left,right) pairs fail to combine -- the
+   shift-reduce search space is dense with non-applicable
+   combinations -- so caching failures alone gives most of the win
+   without any risk of corrupting the variable-freshness invariant
+   that the unifier relies on."
+  (if (*state* :memoize)
+      (let* ((cache (combine-no-go-cache))
+             (key (cons (canonicalize-syn (sign-syn left))
+                        (canonicalize-syn (sign-syn right)))))
+        (multiple-value-bind (val present-p) (gethash key cache)
+          (declare (ignore val))
+          (if present-p
+              nil
+              (let ((result (combine-uncached left right)))
+                (unless result
+                  (setf (gethash key cache) *combine-no-go-marker*))
+                result))))
+      (combine-uncached left right)))
 
 
 ;;; Application

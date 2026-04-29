@@ -38,6 +38,7 @@
 (*state* :eta nil)
 (*state* :verbose nil)
 (*state* :uniq t)
+(*state* :memoize t)
 
 
 (defun proc-input (input)
@@ -70,11 +71,20 @@
      (princ (toggle-flag :verbose)) (terpri))
     ((:uniq :u)
      (princ (toggle-flag :uniq)) (terpri))
+    ((:memoize :m)
+     ;; Toggle the COMBINE cache and clear any existing entries so the
+     ;; next session starts from a known state.
+     (*state* :combine-no-go-cache nil)
+     (princ (toggle-flag :memoize)) (terpri))
     ((:parse :p)
      (let ((expression (cdr input))) (display-parses expression (parse-expression expression))) (terpri))
     ((:file :f)
      (parse-file (cadr input)) (terpri))
-    ((:reload :r) (main))
+    ((:reload :r)
+     ;; Clear the COMBINE cache so reloading the project doesn't
+     ;; carry stale entries from the old grammar into the new one.
+     (*state* :combine-no-go-cache nil)
+     (main))
     (read-error (princ "unknown command") (terpri))
     (otherwise (cond ((keywordp (car input)) (princ "unknown command") (terpri))
                      (t (display-parses input (parse-expression input)) (terpri))))))
@@ -85,6 +95,7 @@
                 (":list-vocab (:l)" "display the vocabulary")
                 (":eta (:e)" "turn on/off eta-normalization of logical forms")
                 (":uniq (:u)" "turn on/off eliminating semantically spurious parses")
+                (":memoize (:m)" "turn on/off memoization of failed CCG combinations")
                 (":verbose (:v)" "verbose output for inspection")
                 (":reload (:r)" "reload the project")
                 (":help (:h)" "help")

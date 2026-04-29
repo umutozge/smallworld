@@ -252,6 +252,7 @@ Here is a list of available commands:
 :list-vocab (:l)         -- display the vocabulary
 :eta (:e)                -- turn on/off eta-normalization of logical forms
 :uniq (:u)               -- turn on/off eliminating semantically spurious parses
+:memoize (:m)            -- turn on/off memoization of failed CCG combinations
 :verbose (:v)            -- verbose output for inspection
 :reload (:r)             -- reload the project
 :help (:h)               -- help
