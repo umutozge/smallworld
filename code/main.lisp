@@ -6,17 +6,9 @@
 ;; its third-party dependencies (str, cl-ppcre, unix-opts, cl-lex,
 ;; cl-yaml, alexandria) are now declared in smallworld.asd at the
 ;; project root and loaded by ASDF before this file runs.  See
-;; install.lisp for the install-time entry point that arranges that.
-;;
-;; The CL-PPCRE nicknames PPCRE and RE were established by an explicit
-;; rename-package in earlier versions of this file.  We do that here in
-;; an idempotent way so a fresh ASDF load picks them up:
-
-(when (find-package "CL-PPCRE")
-  (dolist (nick '("PPCRE" "RE"))
-    (unless (find-package nick)
-      (rename-package "CL-PPCRE" "CL-PPCRE"
-                      (cons nick (package-nicknames "CL-PPCRE"))))))
+;; install.lisp for the install-time entry point that arranges that;
+;; CL-PPCRE's PPCRE/RE convenience nicknames are set up by
+;; code/package-setup.lisp which runs as the first ASDF component.
 
 (setf *print-pretty* t)
 

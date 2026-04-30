@@ -30,7 +30,8 @@
                 "alexandria")
   :pathname    "code/"
   :serial      t
-  :components  ((:file "service")
+  :components  ((:file "package-setup")
+                (:file "service")
                 (:file "conditions")
                 (:file "utils")
                 (:file "unifier")
