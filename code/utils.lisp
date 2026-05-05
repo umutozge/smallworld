@@ -91,7 +91,7 @@
 ;                            ("^\\(" " ")
 ;                            ("\\) +$" " ")
                            
-           (do ((current text (re:regex-replace-all (caar pats) current (cadar pats)))
+           (do ((current text (cl-ppcre:regex-replace-all (caar pats) current (cadar pats)))
                 (pats patterns (cdr pats)))
                ((null pats) current))))
 

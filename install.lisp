@@ -32,12 +32,12 @@
     ("SBCL init file" ,(sb-impl::userinit-pathname)))
   )
 
+;; Make sure ASDF can find smallworld.asd (it lives at *current-dir*).
+;; Quicklisp dispatches third-party :depends-on entries (cl-yaml, etc.)
+;; transparently.
+(pushnew (truename *current-dir*) asdf:*central-registry* :test #'equal)
 
-(setf *default-pathname-defaults* (uiop:merge-pathnames*
-                                    "code/"
-                                    *current-dir*))
-
-(load "main.lisp")
+(ql:quickload :smallworld :silent t)
 
 (format t "~%~%The executable 'smallworld' is created at ~%~%~A~%~%Make sure that this directory is in your PATH.~%~%" *install-dir*)
 

@@ -2,24 +2,13 @@
 ;(declaim (sb-ext:muffle-conditions cl:warning))
 (sb-ext:enable-debugger)
 
-
-(load (merge-pathnames ".sbclrc" (user-homedir-pathname)))
-(ql:quickload :uiop :silent t)
-(ql:quickload :str :silent t)
-(ql:quickload :cl-ppcre :silent t)
-(ql:quickload :unix-opts :silent t)
-(ql:quickload :cl-lex :silent t)
-(ql:quickload :cl-yaml :silent t)
-(ql:quickload :alexandria :silent t)
-(rename-package "CL-PPCRE" "CL-PPCRE" '("PPCRE" "RE"))
-
-;; load the components
-(mapc
-  (lambda (name)
-    (load (str:concat name ".lisp")))
-  '("service" "conditions" "utils" "unifier" "lc-q" "sr-parser" "syn-parser" "sem-parser" "lexicon-reader" "ccg" "morphology" "command-line"))
-
-
+;; The project's source files (service.lisp .. command-line.lisp) and
+;; its third-party dependencies (str, cl-ppcre, unix-opts, cl-lex,
+;; cl-yaml, alexandria) are now declared in smallworld.asd at the
+;; project root and loaded by ASDF before this file runs.  See
+;; install.lisp for the install-time entry point that arranges that;
+;; CL-PPCRE's PPCRE/RE convenience nicknames are set up by
+;; code/package-setup.lisp which runs as the first ASDF component.
 
 (setf *print-pretty* t)
 
@@ -38,6 +27,7 @@
 (*state* :eta nil)
 (*state* :verbose nil)
 (*state* :uniq t)
+(*state* :memoize t)
 
 
 (defun proc-input (input)
@@ -70,11 +60,20 @@
      (princ (toggle-flag :verbose)) (terpri))
     ((:uniq :u)
      (princ (toggle-flag :uniq)) (terpri))
+    ((:memoize :m)
+     ;; Toggle the COMBINE cache and clear any existing entries so the
+     ;; next session starts from a known state.
+     (*state* :combine-no-go-cache nil)
+     (princ (toggle-flag :memoize)) (terpri))
     ((:parse :p)
      (let ((expression (cdr input))) (display-parses expression (parse-expression expression))) (terpri))
     ((:file :f)
      (parse-file (cadr input)) (terpri))
-    ((:reload :r) (main))
+    ((:reload :r)
+     ;; Clear the COMBINE cache so reloading the project doesn't
+     ;; carry stale entries from the old grammar into the new one.
+     (*state* :combine-no-go-cache nil)
+     (main))
     (read-error (princ "unknown command") (terpri))
     (otherwise (cond ((keywordp (car input)) (princ "unknown command") (terpri))
                      (t (display-parses input (parse-expression input)) (terpri))))))
@@ -85,6 +84,7 @@
                 (":list-vocab (:l)" "display the vocabulary")
                 (":eta (:e)" "turn on/off eta-normalization of logical forms")
                 (":uniq (:u)" "turn on/off eliminating semantically spurious parses")
+                (":memoize (:m)" "turn on/off memoization of failed CCG combinations")
                 (":verbose (:v)" "verbose output for inspection")
                 (":reload (:r)" "reload the project")
                 (":help (:h)" "help")
