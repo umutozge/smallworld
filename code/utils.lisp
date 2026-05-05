@@ -215,8 +215,3 @@
                     (sign-sem form)))
             (:syn (syn-to-text (sign-syn form)))
             (:sign (sign-to-text form))))))
-
-a  (bye
-     print (acc)
-     a ) b
-
