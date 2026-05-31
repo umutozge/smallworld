@@ -1,0 +1,290 @@
+#!/usr/bin/env bash
+# ccg-to-svg  --  compile a CCG .sexpr file to an SVG for Jekyll
+#
+# Pipeline: ccg-render -> latex (DVI) -> dvisvgm -> flatten_svg.py
+# Uses the native DVI path; avoids dvisvgm --pdf / Ghostscript issues.
+
+set -euo pipefail
+
+MODE="cgex"
+SEM_FLAG="-s"
+ALL_DIR=""
+JEKYLL_ROOT=""
+DEBUG=0
+POSITIONAL=()
+
+usage() {
+  cat << 'EOF'
+Usage:
+  ccg-to-svg [options] <file.sexpr> [output.svg]
+  ccg-to-svg [options] --all <dir> --jekyll <root>
+
+Options:
+  -m, --mode <mode>   cgex | forest | both  (default: cgex)
+  -n, --no-sem        omit semantics row
+  -s, --sem           include semantics (default)
+  --debug             print commands and preserve temp dir
+  -j, --jekyll <dir>  Jekyll root for --all (writes to <dir>/_includes/ccg/)
+  --all <dir>         convert all .sexpr/.ccg files in <dir>
+  -h, --help          this help
+
+Environment:
+  TEXINPUTS          extra TeX search paths (colon-separated)
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -m|--mode)    MODE="$2"; shift 2 ;;
+    -n|--no-sem)  SEM_FLAG="-n"; shift ;;
+    -s|--sem)     SEM_FLAG="-s"; shift ;;
+    --debug)      DEBUG=1; shift ;;
+    --all)        ALL_DIR="$2"; shift 2 ;;
+    -j|--jekyll)  JEKYLL_ROOT="$2"; shift 2 ;;
+    -h|--help)    usage; exit 0 ;;
+    -*)           echo "ccg-to-svg: unknown option: $1" >&2; usage; exit 1 ;;
+    *)            POSITIONAL+=("$1"); shift ;;
+  esac
+done
+
+need() {
+  command -v "$1" >/dev/null 2>&1 || {
+    echo "ccg-to-svg: '$1' not found on PATH" >&2
+    exit 1
+  }
+}
+
+need ccg-render
+need latex
+need dvisvgm
+need python3
+
+if [[ "$DEBUG" -eq 1 ]]; then
+  TMPDIR_CCG=$(mktemp -d -t ccgsvg.XXXXXX)
+  echo "ccg-to-svg: temp dir preserved at $TMPDIR_CCG" >&2
+else
+  TMPDIR_CCG=$(mktemp -d -t ccgsvg.XXXXXX)
+  trap 'rm -rf "$TMPDIR_CCG"' EXIT
+fi
+
+debug() { [[ "$DEBUG" -eq 1 ]] && echo "+ $*" >&2 || true; }
+write_wrapper() {
+  local snippet="$1"
+  local texfile="$2"
+  cat > "$texfile" << 'LATEX'
+\documentclass[varwidth,border=4pt,dvisvgm]{standalone}
+\usepackage{ccg-latex}
+\begin{document}
+LATEX
+  cat "$snippet" >> "$texfile"
+  echo '' >> "$texfile"
+  echo '\end{document}' >> "$texfile"
+}
+
+run_latex() {
+  local texfile="$1"
+  local logfile="$2"
+  debug "cd $TMPDIR_CCG && latex -interaction=nonstopmode -halt-on-error $(basename "$texfile")"
+  (
+    cd "$TMPDIR_CCG"
+    latex -interaction=nonstopmode -halt-on-error "$(basename "$texfile")" > "$logfile" 2>&1
+  )
+}
+
+run_dvisvgm() {
+  local dvi="$1"
+  local outsvg="$2"
+  local log="$3"
+  debug "dvisvgm --no-fonts --exact-bbox -o $outsvg $dvi"
+  dvisvgm --font-format=woff2,autohint --exact-bbox --optimize=all -o "$outsvg" "$dvi" > "$log" 2>&1
+}
+
+flatten_svg() {
+  local svg="$1"
+  local py="$TMPDIR_CCG/flatten_svg.py"
+  cat > "$py" << 'PY'
+import re, sys
+import xml.etree.ElementTree as ET
+
+svg_path = sys.argv[1]
+SVG_NS   = "http://www.w3.org/2000/svg"
+XLINK_NS = "http://www.w3.org/1999/xlink"
+ET.register_namespace("", SVG_NS)
+ET.register_namespace("xlink", XLINK_NS)
+TAG = lambda name: "{%s}%s" % (SVG_NS, name)
+
+matrix_re    = re.compile(r"matrix\(([^)]+)\)")
+translate_re = re.compile(r"translate\(([^)]+)\)")
+scale_re     = re.compile(r"scale\(([^)]+)\)")
+
+def mmul(a, b):
+    return [a[0]*b[0]+a[2]*b[1], a[1]*b[0]+a[3]*b[1],
+            a[0]*b[2]+a[2]*b[3], a[1]*b[2]+a[3]*b[3],
+            a[0]*b[4]+a[2]*b[5]+a[4], a[1]*b[4]+a[3]*b[5]+a[5]]
+
+def parse_transform(s):
+    if not s: return [1,0,0,1,0,0]
+    s = s.strip()
+    m = matrix_re.fullmatch(s)
+    if m:
+        v = [float(x) for x in re.split(r"[ ,]+", m.group(1).strip()) if x]
+        if len(v) == 6: return v
+    m = translate_re.fullmatch(s)
+    if m:
+        v = [float(x) for x in re.split(r"[ ,]+", m.group(1).strip()) if x]
+        if len(v) == 1: return [1,0,0,1,v[0],0]
+        if len(v) >= 2: return [1,0,0,1,v[0],v[1]]
+    m = scale_re.fullmatch(s)
+    if m:
+        v = [float(x) for x in re.split(r"[ ,]+", m.group(1).strip()) if x]
+        if len(v) == 1: return [v[0],0,0,v[0],0,0]
+        if len(v) >= 2: return [v[0],0,0,v[1],0,0]
+    return [1,0,0,1,0,0]
+
+def fmt(x):
+    if abs(x) < 1e-12: x = 0.0
+    s = f"{x:.6f}".rstrip("0").rstrip(".")
+    return s if s not in ("", "-0") else "0"
+
+def near_id(m):
+    return (abs(m[0]-1)<2e-3 and abs(m[1])<1e-9 and abs(m[2])<1e-9
+            and abs(m[3]-1)<2e-3 and abs(m[4])<1e-9 and abs(m[5])<1e-9)
+
+def almost_same(a, b):
+    return all(abs(x-y)<2e-3 for x,y in zip(a,b))
+
+tree   = ET.parse(svg_path)
+root   = tree.getroot()
+root_m = (parse_transform(root[0].attrib.get("transform"))
+          if len(root) and root[0].tag == TAG("g") else [1,0,0,1,0,0])
+
+def flatten(parent, inh=None):
+    if inh is None: inh = [1,0,0,1,0,0]
+    for child in list(parent):
+        loc  = parse_transform(child.attrib.get("transform"))
+        comb = mmul(inh, loc)
+        if child.tag == TAG("g"):
+            flatten(child, comb)
+            child.attrib.pop("transform", None)
+            if len(child) == 0 and not (child.text or "").strip():
+                parent.remove(child)
+            elif near_id(comb) or almost_same(comb, root_m):
+                idx = list(parent).index(child)
+                parent.remove(child)
+                for off, grand in enumerate(list(child)):
+                    parent.insert(idx+off, grand)
+        else:
+            if child.tag == TAG("use"):
+                x  = float(child.attrib.get("x", "0"))
+                y  = float(child.attrib.get("y", "0"))
+                pl = mmul(comb, [1,0,0,1,x,y])
+                child.attrib["x"] = fmt(pl[4])
+                child.attrib["y"] = fmt(pl[5])
+                if near_id([pl[0],pl[1],pl[2],pl[3],0,0]):
+                    child.attrib.pop("transform", None)
+                else:
+                    child.attrib["transform"] = (
+                        f"matrix({fmt(pl[0])} {fmt(pl[1])} {fmt(pl[2])} {fmt(pl[3])} 0 0)")
+            else:
+                if not near_id(comb):
+                    child.attrib["transform"] = (
+                        f"matrix({fmt(comb[0])} {fmt(comb[1])} {fmt(comb[2])} "
+                        f"{fmt(comb[3])} {fmt(comb[4])} {fmt(comb[5])}")
+                else:
+                    child.attrib.pop("transform", None)
+
+for child in list(root):
+    if child.tag == TAG("defs"): continue
+    flatten(child)
+
+changed = True
+while changed:
+    changed = False
+    for child in list(root):
+        if child.tag == TAG("g") and "transform" not in child.attrib:
+            idx = list(root).index(child)
+            root.remove(child)
+            for off, grand in enumerate(list(child)):
+                root.insert(idx+off, grand)
+            changed = True; break
+
+tree.write(svg_path, encoding="unicode", xml_declaration=False)
+PY
+  debug "python3 $py $svg"
+  python3 "$py" "$svg"
+}
+
+compile_one() {
+  local sexpr="$1"
+  local outsvg="$2"
+
+  local snippet="$TMPDIR_CCG/snippet.tex"
+  local texfile="$TMPDIR_CCG/deriv.tex"
+  local texlog="$TMPDIR_CCG/latex.log"
+  local svglog="$TMPDIR_CCG/dvisvgm.log"
+
+  debug "ccg-render $SEM_FLAG -m $MODE $sexpr > $snippet"
+  ccg-render "$SEM_FLAG" -m "$MODE" "$sexpr" > "$snippet"
+
+  if [[ ! -s "$snippet" ]]; then
+    echo "ccg-to-svg: ccg-render produced empty output for $sexpr" >&2
+    return 1
+  fi
+
+  write_wrapper "$snippet" "$texfile"
+
+  if ! run_latex "$texfile" "$texlog"; then
+    echo "ccg-to-svg: latex failed for $sexpr" >&2
+    echo "  log: $texlog" >&2
+    sed -n '1,220p' "$texlog" >&2 || true
+    return 1
+  fi
+
+  local dvi="$TMPDIR_CCG/deriv.dvi"
+  if [[ ! -f "$dvi" ]]; then
+    echo "ccg-to-svg: latex succeeded but deriv.dvi is missing" >&2
+    return 1
+  fi
+
+  mkdir -p "$(dirname "$outsvg")"
+
+  if ! run_dvisvgm "$dvi" "$outsvg" "$svglog"; then
+    echo "ccg-to-svg: dvisvgm failed for $sexpr" >&2
+    echo "  log: $svglog" >&2
+    sed -n '1,220p' "$svglog" >&2 || true
+    echo "  temp dir: $TMPDIR_CCG" >&2
+    return 1
+  fi
+
+  flatten_svg "$outsvg"
+
+  if [[ ! -s "$outsvg" ]]; then
+    echo "ccg-to-svg: no SVG produced for $sexpr" >&2
+    echo "  temp dir: $TMPDIR_CCG" >&2
+    return 1
+  fi
+
+  echo "  -> $outsvg"
+}
+
+if [[ -n "$ALL_DIR" ]]; then
+  [[ -d "$ALL_DIR" ]] || { echo "ccg-to-svg: directory not found: $ALL_DIR" >&2; exit 1; }
+  OUTDIR="${JEKYLL_ROOT:+$JEKYLL_ROOT/_includes/ccg}"
+  OUTDIR="${OUTDIR:-$ALL_DIR}"
+  mkdir -p "$OUTDIR"
+  count=0
+  shopt -s nullglob
+  for sexpr in "$ALL_DIR"/*.sexpr "$ALL_DIR"/*.ccg; do
+    base="$(basename "${sexpr%.*}")"
+    compile_one "$sexpr" "$OUTDIR/$base.svg"
+    ((count++))
+  done
+  echo "ccg-to-svg: converted $count file(s) -> $OUTDIR"
+  exit 0
+fi
+
+[[ ${#POSITIONAL[@]} -gt 0 ]] || { echo "ccg-to-svg: no input file specified" >&2; exit 1; }
+INFILE="${POSITIONAL[0]}"
+[[ -f "$INFILE" ]] || { echo "ccg-to-svg: file not found: $INFILE" >&2; exit 1; }
+OUTSVG="${POSITIONAL[1]:-${INFILE%.*}.svg}"
+compile_one "$INFILE" "$OUTSVG"

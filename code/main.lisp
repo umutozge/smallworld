@@ -28,7 +28,7 @@
 (*state* :verbose nil)
 (*state* :uniq t)
 (*state* :memoize t)
-
+(*state* :deriv-path (aux:make-path-generator '("tex") "sexpr" "der") )
 
 (defun proc-input (input)
   "Handle the console input"
@@ -51,7 +51,6 @@
                                                         (*state* 'vocab))
                                                       #'string<
                                                       :key #'(lambda (x) (symbol-name (second x)))))
-                                                      
                                                   8))
      (terpri))
     ((:eta :e)
@@ -108,7 +107,6 @@
                       (FILE-DOES-NOT-EXIST (err)
                                            (format t "~%The file ~A cannot be found.~%~%Check path and make sure to avoid capital letters and spaces in your filenames.~%" (namestring inpath))
                                            (return-from parse-file 0)))))
-                                           
 
     (if (probe-file outpath) (delete-file outpath))
 
@@ -119,14 +117,13 @@
       (dolist (i sentences)
         (display-parses i (parse-expression i) str))
       (format t "~%Output written to ~A~%" (namestring outpath)))))
-      
 
 (defun display-parses (input-expression parses &optional (str t))
   (if parses
       (mapc
         #'(lambda (item)
             (typecase (cadr item)
-              (string (format str "~%~A~%" (cadr item))) ; ERROR 
+              (string (format str "~%~A~%" (cadr item))) ; ERROR
               (list (let ((index (car item))
                           (result (caadr item))
                           (derivation (cadr item)))
@@ -140,14 +137,22 @@
                       (format str "~%-----------------------------------------------~%")
                       (when (*state* :verbose)
                         (format str "~%--------------------DERIV ~D--------------------~%" (car item))
-                        (aux:print-binary-tree (aux:maptree #'(lambda (x) (pretty-print :type :sign :format :tex :form x)) derivation) 0 2 str)
-                        (format str "~%------------------------------------------------~%"))))))
-        parses)
-        
+                        (aux:print-binary-tree
+			  (aux:maptree #'(lambda (x)
+					   (pretty-print :type :sign :format :tex :form x))
+				       derivation)
+			  0 2 str)
+			(with-open-file (out (funcall (*state* :deriv-path))
+					     :direction :output
+					     :if-exists :overwrite :if-does-not-exist :create)
+			  (write-string (prin1-to-string (aux:transtree derivation (typep aux:x 'sign) (expand-syn aux:x))) out))
+			(format str "~%------------------------------------------------~%")
+			)))))
 
+	parses)
       (format str "~%*~{~A~^ ~}~%" input-expression))) ; FAILURE
 
-      
+
 
 (defun parse-expression (expression)
   "return a numeration of parse
@@ -188,8 +193,6 @@
     (SB-POSIX:SYSCALL-ERROR (err)
                             (format t "~%Cannot find ~A~%~%" (*state* :project))
                             (sb-ext:quit)))
-                            
-    
 
   (*state* :prompt (pathname-name (*state* :project)))
   (*state* :debug-lexicon-path (make-pathname :name "_lexicon" :type "lisp" :directory (pathname-directory (*state* :project-dir))))

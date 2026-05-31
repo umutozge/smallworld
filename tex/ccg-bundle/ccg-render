@@ -1,0 +1,193 @@
+#!/usr/bin/env lua
+--[[
+  ccg-render  --  render a CCG derivation .sexpr file to TeX on stdout
+
+  Usage:
+    ccg-render [options] <file.sexpr>
+
+  Options:
+    -m, --mode <mode>    cgex | forest | both  (default: cgex)
+    -s, --sem            include semantics row  (default: on)
+    -n, --no-sem         omit semantics row
+    -h, --help           show this help
+
+  Examples:
+    ccg-render deriv.sexpr                        # cgex + sem to stdout
+    ccg-render -n deriv.sexpr                     # cgex, no sem
+    ccg-render -m forest deriv.sexpr              # forest + sem
+    ccg-render deriv.sexpr > deriv-out.tex        # write to file
+    ccg-render deriv.sexpr | pbcopy               # macOS clipboard
+    ccg-render deriv.sexpr | xclip -selection c   # Linux clipboard
+    ccg-render deriv.sexpr | wl-copy              # Wayland clipboard
+
+  CCG_LUA_PATH may be:
+    - a colon-separated list of directories, OR
+    - a direct path to ccg-core.lua itself
+--]]
+
+-- ── locate ccg-core.lua ──────────────────────────────────────────────────
+
+local function script_dir()
+  local p = arg and arg[0]
+  if not p then return nil end
+  -- expand leading ~ manually (Lua does not do shell expansion)
+  p = p:gsub("^~", os.getenv("HOME") or "~")
+  return p:match("^(.+)/[^/]+$") or "."
+end
+
+local function file_exists(path)
+  -- expand ~ in path
+  path = path:gsub("^~", os.getenv("HOME") or "~")
+  local f = io.open(path, "r")
+  if f then f:close(); return path end   -- return expanded path
+  return nil
+end
+
+local function find_core()
+  local name = "ccg-core.lua"
+  local tried = {}
+
+  local function try(path)
+    path = path:gsub("^~", os.getenv("HOME") or "~")
+    tried[#tried+1] = path
+    local f = io.open(path, "r")
+    if f then f:close(); return path end
+    return nil
+  end
+
+  -- 1. CCG_LUA_PATH: accept both a direct file path and colon-separated dirs
+  local env = os.getenv("CCG_LUA_PATH") or ""
+  for raw_entry in env:gmatch("[^:]+") do
+    local entry = raw_entry:gsub("^%s+", ""):gsub("%s+$", "")  -- trim whitespace
+    if entry ~= "" then
+      -- if the entry ends with .lua treat it as a direct file path
+      if entry:match("%.lua$") then
+        local p = try(entry)
+        if p then return p end
+      else
+        local p = try(entry .. "/" .. name)
+        if p then return p end
+      end
+    end
+  end
+
+  -- 2. same directory as this script
+  local sd = script_dir()
+  if sd then
+    local p = try(sd .. "/" .. name)
+    if p then return p end
+  end
+
+  -- 3. current working directory
+  local p = try("./" .. name)
+  if p then return p end
+
+  return nil, tried
+end
+
+local core_path, tried = find_core()
+if not core_path then
+  io.stderr:write("ccg-render: cannot find ccg-core.lua\n")
+  io.stderr:write("  Searched:\n")
+  for _, p in ipairs(tried or {}) do
+    io.stderr:write("    " .. p .. "\n")
+  end
+  io.stderr:write(
+    "  Set CCG_LUA_PATH to either:\n"
+    .. "    the directory:  export CCG_LUA_PATH=~/Library/texmf/scripts/ccg\n"
+    .. "    or the file:    export CCG_LUA_PATH=~/Library/texmf/scripts/ccg/ccg-core.lua\n"
+  )
+  os.exit(1)
+end
+
+-- ── stub out LuaTeX globals so ccg-core loads standalone ─────────────────
+
+tex = tex or {}
+
+local _output_parts = {}
+
+tex.sprint = function(s)
+  _output_parts[#_output_parts+1] = tostring(s)
+end
+tex.print = function(s)
+  if type(s) == "table" then
+    for _, v in ipairs(s) do
+      _output_parts[#_output_parts+1] = tostring(v) .. "\n"
+    end
+  else
+    _output_parts[#_output_parts+1] = tostring(s) .. "\n"
+  end
+end
+
+local ok, CCG = pcall(dofile, core_path)
+if not ok then
+  io.stderr:write("ccg-render: error loading " .. core_path .. ":\n  " .. tostring(CCG) .. "\n")
+  os.exit(1)
+end
+
+-- ── argument parsing ──────────────────────────────────────────────────────
+
+local mode     = "cgex"
+local with_sem = true
+local infile   = nil
+
+local i = 1
+while i <= #arg do
+  local a = arg[i]
+  if a == "-h" or a == "--help" then
+    local prog = (arg[0] or "ccg-render"):match("[^/]+$")
+    io.stdout:write(prog .. [=[
+
+Usage: ccg-render [options] <file.sexpr>
+
+Options:
+  -m, --mode <mode>   cgex | forest | both  (default: cgex)
+  -s, --sem           include semantics (default)
+  -n, --no-sem        omit semantics
+  -h, --help          this help
+
+Output goes to stdout:
+  ccg-render deriv.sexpr                   to stdout
+  ccg-render deriv.sexpr > out.tex         to file
+  ccg-render deriv.sexpr | pbcopy          macOS clipboard
+  ccg-render deriv.sexpr | xclip -sel c    Linux/X11 clipboard
+  ccg-render deriv.sexpr | wl-copy         Wayland clipboard
+
+CCG_LUA_PATH (either form works):
+  export CCG_LUA_PATH=~/Library/texmf/scripts/ccg
+  export CCG_LUA_PATH=~/Library/texmf/scripts/ccg/ccg-core.lua
+]=])
+    os.exit(0)
+  elseif a == "-m" or a == "--mode" then
+    i = i + 1
+    mode = arg[i] or "cgex"
+  elseif a == "-s" or a == "--sem" then
+    with_sem = true
+  elseif a == "-n" or a == "--no-sem" then
+    with_sem = false
+  elseif a:sub(1,1) ~= "-" then
+    infile = a
+  else
+    io.stderr:write("ccg-render: unknown option: " .. a .. "\n")
+    os.exit(1)
+  end
+  i = i + 1
+end
+
+if not infile then
+  io.stderr:write("ccg-render: no input file specified (try --help)\n")
+  os.exit(1)
+end
+
+-- ── render ────────────────────────────────────────────────────────────────
+
+CCG.file(infile, mode, with_sem)
+
+local result = table.concat(_output_parts)
+
+-- light cleanup: collapse runs of spaces introduced by sprint joins,
+-- but protect \\ (TeX newline) and leading spaces in cells
+result = result:gsub("([^ \\]) {2,}", "%1 ")
+
+io.stdout:write(result)
+if result:sub(-1) ~= "\n" then io.stdout:write("\n") end

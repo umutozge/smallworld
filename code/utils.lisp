@@ -1,6 +1,6 @@
 ;;;
 ;;; SmallWorld
-;;; 
+;;;
 ;;; utilities
 ;;;
 
@@ -11,6 +11,16 @@
      (when (*state* :verbose)
        (format t "~A~%~{~A~%~}~%" ,message (funcall ,transform val)))
      val))
+
+(defun expand-syn (sign)
+  "Expand the syn cat of a sign"
+  (assert (typep sign 'sign))
+  (setf (sign-syn sign)
+	(pretty-print :form sign
+		      :type :syn
+		      :format :text))
+  sign)
+
 
 (defun pretty-print (&key form type format)
   (let ((*logical-constants* '(cond and or equal prec))
@@ -44,7 +54,6 @@
 
                        ;(string (aux:symbol-char form (- (aux:symbol-length form) 1)))
 
-                       
                     ((string= (symbol-name form) "NEG") (symbol-name form))
                     (t (concatenate 'string
                                     (symbol-name form)
@@ -90,7 +99,7 @@
                            (" \\)" ")"))))
 ;                            ("^\\(" " ")
 ;                            ("\\) +$" " ")
-                           
+
            (do ((current text (cl-ppcre:regex-replace-all (caar pats) current (cadar pats)))
                 (pats patterns (cdr pats)))
                ((null pats) current))))
@@ -112,7 +121,7 @@
                                    ("prec"     . ,(concatenate 'string " " (string #\U227A) " "))
                                    ("equal"  . ,(concatenate 'string " " (string #\=) " "))
                                    ("lam"    . ,(string #\U1D6CC)))))
-                        
+
                       (mapcar
                         #'(lambda (x)
                             (let ((match (assoc x table :test #'string-equal)))
@@ -140,7 +149,7 @@
                                     ("prec"   . "\\prec")
                                     ("equal"   . "=")
                                     ("lam"    . "\\lambda"))))
-                                  
+
                        (mapcar
                          #'(lambda (x)
                              (let ((match (assoc x table :test #'string-equal)))
@@ -205,7 +214,9 @@
                      (string-downcase (format nil "[~A = ~A : ~A]"
                                               (sign-phon sign)
                                               (finisher (syn-to-text (sign-syn sign)))
-                                              (sem-to-text (sign-sem sign))))))
+                                              (if (equalp format :text)
+                                               (sem-to-text (sign-sem sign))
+                                               (sem-to-tex (sign-sem sign)))))))
 
       (case type
             (:sem (funcall

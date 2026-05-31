@@ -11,7 +11,7 @@
   - (bar 0 1 2)
 
  category-bundles:
-  - (s (cat v)) 
+  - (s (cat v))
   - (np (cat n) (bar 2))
   - (n (cat n) (bar 0))
 
@@ -19,22 +19,22 @@
 
   - pos: pn
     syn: np[sg]
-    sem: lex' 
+    sem: lex'
     phon: [john,mary,alex]
 
   - pos: n
     syn: n[sg]
-    sem: lex' 
+    sem: lex'
     phon: [dog,cat,spy,city]
 
   - pos: n
     syn: n[pl]
-    sem: lex' 
+    sem: lex'
     phon: [dogs,cats,spies,cities]
 
   - pos: v
     syn: s\np[agr=sg]
-    sem: lex' 
+    sem: lex'
     phon: [talks,walks,panics]
 
   - pos: v
@@ -44,15 +44,15 @@
 
   - pos: v
     syn: s\np[agr=sg]/np
-    sem: lex' 
+    sem: lex'
     phon: [chases,likes]
 
   - pos: v
     syn: s\np[agr=pl]/np
-    sem: lex' 
+    sem: lex'
     phon: [chase,like]
 
   - pos: d
     syn: np[agr=?x]/n[agr=?x]
-    sem: lex' 
+    sem: lex'
     phon: [the]

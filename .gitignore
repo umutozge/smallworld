@@ -15,3 +15,21 @@
 *.sx32fsl
 *.wx64fsl
 *.wx32fsl
+
+# TeX
+*.aux
+*.log
+
+# conjure
+
+conjure-log-*
+
+# Mac OS X
+.DS_Store
+
+# Vim
+Session.vim
+
+# Files
+code/prj/*
+tests/*

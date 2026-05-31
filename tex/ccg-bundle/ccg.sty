@@ -1,0 +1,21 @@
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{ccg}[2026/05/20 CCG derivation wrapper]
+
+\RequirePackage{ccg-latex}
+\RequirePackage{luacode}
+
+\directlua{CCG = require("ccg-core")}
+
+% \ccgfile{file}          -- cgex with semantics
+% \ccgfilens{file}        -- cgex without semantics
+% \ccgforestfile{file}    -- forest with semantics
+% \ccgforestfilens{file}  -- forest without semantics
+% \ccgbothfile{file}      -- cgex + forest with semantics
+% \ccgdumpfile{in}{out}   -- dump cgex+sem to .tex then \input it
+
+\newcommand{\ccgfile}[1]{\directlua{CCG.cgexfile([[\luatexluaescapestring{#1}]])}}
+\newcommand{\ccgfilens}[1]{\directlua{CCG.cgexfilens([[\luatexluaescapestring{#1}]])}}
+\newcommand{\ccgforestfile}[1]{\directlua{CCG.forestfile([[\luatexluaescapestring{#1}]])}}
+\newcommand{\ccgforestfilens}[1]{\directlua{CCG.forestfilens([[\luatexluaescapestring{#1}]])}}
+\newcommand{\ccgbothfile}[1]{\directlua{CCG.bothfile([[\luatexluaescapestring{#1}]])}}
+\newcommand{\ccgdumpfile}[2]{\directlua{CCG.cgexdump([[\luatexluaescapestring{#1}]],[[\luatexluaescapestring{#2}]])}}

@@ -16,6 +16,7 @@
            :string-to-list
            :csv-to-str-list
            :list-to-hash-table
+	   :make-path-generator
            :one-char-sym-p
            :shuffle-list
            :symbol=
@@ -23,7 +24,7 @@
            :translate-string-word
            :partition
            :random-num-with-n-digits
-           :read-file-as-string 
+           :read-file-as-string
            :read-from-file
            :replace-char-with-str
            :restore-left-assoc
@@ -40,14 +41,27 @@
            :maptree
            :tree2avm
            :tree2qtree
+	   :transtree
            :print-binary-tree
            :cartesian-product
            :update-alist
            :pathnames-by-extension
+	   :x
            ))
 
 (in-package aux)
 
+(defun make-path-generator (relative-dir extension prefix
+                                   &key (start 0))
+  (let ((counter start))
+    (lambda ()
+      (prog1
+          (make-pathname
+           :directory (and relative-dir
+                           (cons :relative relative-dir))
+           :name (format nil "~A-~D" prefix counter)
+           :type extension)
+        (incf counter)))))
 
 (defun counter (&optional (start 0))
   "Returns a function that returns a counter starting at START."
@@ -156,6 +170,28 @@
                    ((consp tree) (cons (_maptree (car tree)) (_maptree (cdr tree))))
                    ((atom tree) (funcall func tree)))))
     (_maptree tree)))
+
+
+(defun transtree%% (tree test func)
+  (if tree
+      (if (listp tree)
+          (cons
+           (transtree%% (car tree) test func)
+           (transtree%% (cdr tree) test func))
+          (if (funcall test tree)
+              (funcall func tree)
+              tree))))
+
+(defmacro transtree (tree test func)
+  "recursively transform a tree by substituting each terminal verifying the test with result"
+  `(transtree%%
+     ,tree
+     (lambda (x)
+       (declare (ignorable x))
+       ,test)
+     (lambda (x)
+       (declare (ignorable x))
+       ,func)))
 
 
 (defun prompt (&rest args)

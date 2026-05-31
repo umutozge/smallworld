@@ -1,0 +1,100 @@
+!Multichar_Symbols +n +pn +sg +pl +num +case +acc +nom +1 +%0 +agr +tense +past +pres
+
+LEXICON Root
+
+Noun ;
+PNoun ;
+Verb ;
+Det ;
+RelPron ;
+Conj ;
+
+LEXICON Noun
+
+spy   NCat;
+cat   NCat;
+dog	  NCat;
+city  NCat;
+fox   NCat;
+panic NCat;
+try   NCat;
+watch NCat;
+
+LEXICON PNoun
+
+john PNCat;
+mary PNCat;
+alex PNCat;
+
+LEXICON NCat
+
++n:0 NNum;
+
+LEXICON PNCat
+
++pn+sg+num:0 PNCase;
+
+LEXICON NNum
++sg+num:0 #;
++pl+num:^s #;
+
+LEXICON PNCase
+
++acc+case:0 #;
++nom+case:0 #;
+
+LEXICON Verb
+
+talk  VCat;
+walk  VCat;
+sleep VCat;
+like  VCat;
+beg   VCat;
+make  VCat;
+panic VCat;
+try   VCat;
+watch VCat;
+persuade VCat;
+promise VCat;
+chase VCat;
+
+LEXICON VCat
+
++v:0 #;
++v:0 VAgr;
+
+LEXICON VAgr
+
++1p+agr+pres+tense:0  #;
++3p+agr+pres+tense:^s  #;
++1p+agr+past+tense:^ed #;
++3p+agr+past+tense:^ed #;
+
+LEXICON Det
+
+the   DCat;
+every DCat; 
+some  DCat; 
+no    DCat;
+a DCat;
+
+LEXICON DCat
+
++d:0 #;
+
+LEXICON RelPron
+
+who RelPronCat;
+whom RelPronCat;
+which RelPronCat;
+that RelPronCat;
+
+LEXICON RelPronCat
++rel:0 #;
+
+LEXICON Conj
+and ConjCat;
+or ConjCat;
+
+LEXICON ConjCat
++conj:0 #;
